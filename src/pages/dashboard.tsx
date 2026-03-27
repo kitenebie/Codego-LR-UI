@@ -229,7 +229,7 @@ export function Dashboard() {
             data={tableData}
             columns={TABLE_COLS}
             searchable
-            pagination
+            clientPagination
             itemsPerPage={4}
             selectable
             onBulkDelete={(ids) => setTableData((d) => d.filter((r) => !ids.includes(r.id)))}

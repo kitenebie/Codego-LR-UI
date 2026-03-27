@@ -1,22 +1,110 @@
 import * as React from "react"
-import { Plus, Trash2, GripVertical } from "lucide-react"
+import { Plus, Trash2, GripVertical, Paperclip } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { Button } from "./button"
+import { Input } from "./input"
+
+export interface RepeaterField {
+  type: "input" | "image" | "attachment"
+  key: string
+  label?: string
+  placeholder?: string
+}
+
+export interface RepeaterPayloadItem {
+  type: "input" | "image" | "attachment"
+  key: string
+  value: any
+}
 
 export interface RepeaterProps<T> {
   items: T[]
   onAdd: () => void
   onRemove: (index: number) => void
-  renderItem: (item: T, index: number) => React.ReactNode
+  renderItem?: (item: T, index: number) => React.ReactNode
+  /** Structured field definitions — when provided, renders fields automatically */
+  fields?: RepeaterField[]
+  /** Called when a field value changes: (rowIndex, key, value) */
+  onFieldChange?: (index: number, key: string, value: any) => void
   addButtonText?: string
   className?: string
 }
 
-export function Repeater<T>({
+function RepeaterFieldRenderer({
+  field,
+  value,
+  onChange,
+}: {
+  field: RepeaterField
+  value: any
+  onChange: (v: any) => void
+}) {
+  if (field.type === "image") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        {field.label && <span className="text-xs font-medium text-muted-foreground">{field.label}</span>}
+        <div className="flex items-center gap-3">
+          {value && (
+            <img src={value} alt={field.key} className="h-10 w-10 rounded-lg object-cover ring-1 ring-border shrink-0" />
+          )}
+          <Input
+            inputType="text"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder ?? "Image URL"}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (field.type === "attachment") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        {field.label && <span className="text-xs font-medium text-muted-foreground">{field.label}</span>}
+        <div className="flex items-center gap-2">
+          {value && (
+            <a
+              href={value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors shrink-0"
+            >
+              <Paperclip className="h-3 w-3" />
+              {String(value).split("/").pop()}
+            </a>
+          )}
+          <Input
+            inputType="text"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={field.placeholder ?? "Attachment URL"}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {field.label && <span className="text-xs font-medium text-muted-foreground">{field.label}</span>}
+      <Input
+        inputType="text"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder ?? field.key}
+      />
+    </div>
+  )
+}
+
+export function Repeater<T extends Record<string, any>>({
   items,
   onAdd,
   onRemove,
   renderItem,
+  fields,
+  onFieldChange,
   addButtonText = "Add Item",
   className,
 }: RepeaterProps<T>) {
@@ -39,7 +127,20 @@ export function Repeater<T>({
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0">{renderItem(item, index)}</div>
+          <div className="flex-1 min-w-0">
+            {fields ? (
+              <div className="grid gap-3" style={{ gridTemplateColumns: fields.length > 1 ? `repeat(${Math.min(fields.length, 3)}, minmax(0, 1fr))` : "1fr" }}>
+                {fields.map((f) => (
+                  <RepeaterFieldRenderer
+                    key={f.key}
+                    field={f}
+                    value={(item as any)[f.key]}
+                    onChange={(v) => onFieldChange?.(index, f.key, v)}
+                  />
+                ))}
+              </div>
+            ) : renderItem ? renderItem(item, index) : null}
+          </div>
 
           {/* Remove button */}
           <Button

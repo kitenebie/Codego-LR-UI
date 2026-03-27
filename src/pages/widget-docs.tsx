@@ -254,7 +254,7 @@ export function WidgetDocs() {
               data={tableData}
               columns={tableColumns}
               searchable
-              pagination
+              clientPagination
               itemsPerPage={5}
               selectable
             />

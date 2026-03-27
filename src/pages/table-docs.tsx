@@ -4,7 +4,7 @@ import { Table, Column, useServerTable } from "../components/ui/table"
 import { PropsTable } from "../components/ui/props-table"
 import { FileUpload } from "../components/ui/file-upload"
 import { Input } from "../components/ui/input"
-import { ShieldCheck, ShieldAlert, ShieldX, Star, Download } from "lucide-react"
+import { ShieldCheck, ShieldAlert, ShieldX, Star, Download, ChevronDown, Mail, Phone, MapPin } from "lucide-react"
 import * as React from "react"
 import tableDocsData from "../components/docs/table.json"
 
@@ -94,6 +94,14 @@ export function TableDocs() {
     <DocsLayout toc={[
       { id: "datatable",        label: "Data Table" },
       { id: "usertable",        label: "User Table" },
+      { id: "loading",          label: "Loading & Error States" },
+      { id: "expandable",       label: "Expandable Rows" },
+      { id: "rowevents",        label: "Row Events" },
+      { id: "columnvisibility", label: "Column Visibility" },
+      { id: "exportable",       label: "Export" },
+      { id: "draggable",        label: "Drag & Drop Reorder" },
+      { id: "keyboard",         label: "Keyboard Navigation" },
+      { id: "virtualized",      label: "Virtualized" },
       { id: "defaultactions",   label: "Default Actions" },
       { id: "editform",          label: "editForm / viewForm" },
       { id: "viewformgrid",       label: "viewForm / viewFormGrid" },
@@ -111,6 +119,10 @@ export function TableDocs() {
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
       { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
       { id: "fileuploadform",    label: "File Upload in editForm" },
+      { id: "variant-zebra",     label: "Variant: Zebra" },
+      { id: "variant-card",      label: "Variant: Card" },
+      { id: "variant-glass",     label: "Variant: Glass" },
+      { id: "variant-soft",      label: "Variant: Soft UI" },
       { id: "props",            label: "Props" },
     ]}>
 
@@ -122,7 +134,7 @@ export function TableDocs() {
   data={data}
   columns={columns}
   searchable
-  pagination
+  clientPagination
   itemsPerPage={5}
   selectable
   onBulkDelete={(ids) => console.log(ids)}
@@ -132,7 +144,7 @@ export function TableDocs() {
           data={COIN_DATA}
           columns={COIN_COLUMNS}
           searchable
-          pagination
+          clientPagination
           itemsPerPage={5}
           selectable
           onBulkDelete={(ids) => alert(`Deleting IDs: ${ids.join(", ")}`)}
@@ -150,7 +162,7 @@ export function TableDocs() {
   { key: "status",     title: "Status",     type: "badge", sortable: true },
 ]
 
-<Table data={users} columns={columns} searchable pagination itemsPerPage={5} selectable />`}
+<Table data={users} columns={columns} searchable clientPagination itemsPerPage={5} selectable />`}
       >
         {(() => {
           const userColumns: Column<typeof USER_DATA[0]>[] = [
@@ -166,11 +178,322 @@ export function TableDocs() {
               columns={userColumns}
               searchable
               searchPlaceholder="Search users…"
-              pagination
+              clientPagination
               itemsPerPage={5}
               selectable
               onBulkDelete={(ids) => alert(`Removing: ${ids.join(", ")}`)}
             />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Loading & Error ── */}
+      <Section id="loading"><Playground
+        title="Loading & Error States"
+        description="Pass loading to show a spinner while data is fetching. Pass error to display a red banner above the toolbar. Pass emptyState to replace the default 'No results found' UI."
+        code={`// Loading spinner
+<Table data={[]} columns={columns} loading />
+
+// Error banner
+<Table data={[]} columns={columns} error="Failed to load users. Please try again." />
+
+// Custom empty state
+<Table
+  data={[]}
+  columns={columns}
+  emptyState={
+    <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+      <span className="text-4xl">🗂️</span>
+      <p className="text-sm font-medium">No records yet</p>
+      <button className="text-xs text-primary hover:underline">Add your first record</button>
+    </div>
+  }
+/>`}
+      >
+        {(() => {
+          const [mode, setMode] = React.useState<"loading" | "error" | "empty" | "data">("loading")
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-3">
+              <div className="flex gap-2 flex-wrap">
+                {(["loading", "error", "empty", "data"] as const).map((m) => (
+                  <button key={m} onClick={() => setMode(m)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      mode === m ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"
+                    }`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <Table
+                data={mode === "data" ? USER_DATA.slice(0, 5) : []}
+                columns={userColumns}
+                loading={mode === "loading"}
+                error={mode === "error" ? "Failed to load users. Please try again." : undefined}
+                emptyState={mode === "empty" ? (
+                  <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                    <span className="text-4xl">🗂️</span>
+                    <p className="text-sm font-medium">No records yet</p>
+                  </div>
+                ) : undefined}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Expandable Rows ── */}
+      <Section id="expandable"><Playground
+        title="Expandable Rows"
+        description="Enable expandable to add a chevron column. Click any row to toggle its expanded content. Use renderExpanded to return any React node for the expanded panel."
+        code={`<Table
+  data={users}
+  columns={columns}
+  expandable
+  renderExpanded={(item) => (
+    <div className="flex gap-6 text-sm">
+      <span><Mail className="inline h-3.5 w-3.5 mr-1" />{item.email}</span>
+      <span><Phone className="inline h-3.5 w-3.5 mr-1" />{item.phone}</span>
+      <span><MapPin className="inline h-3.5 w-3.5 mr-1" />{item.location}</span>
+    </div>
+  )}
+/>`}
+      >
+        {(() => {
+          const expandData = USER_DATA.slice(0, 6).map((u, i) => ({
+            ...u,
+            phone: `+1 555-${String(1000 + i * 137).slice(0, 4)}`,
+            location: ["New York", "San Francisco", "Austin", "Seattle", "Chicago", "Boston"][i % 6],
+          }))
+          const expandColumns: Column<typeof expandData[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <Table
+              data={expandData}
+              columns={expandColumns}
+              expandable
+              renderExpanded={(item) => (
+                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground py-1">
+                  <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{item.email}</span>
+                  <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{item.phone}</span>
+                  <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{item.location}</span>
+                  <span className="flex items-center gap-1.5">Dept: <strong className="text-foreground">{item.department}</strong></span>
+                  <span className="flex items-center gap-1.5">Joined: <strong className="text-foreground">{item.joined}</strong></span>
+                </div>
+              )}
+            />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Row Events ── */}
+      <Section id="rowevents"><Playground
+        title="Row Events"
+        description="onRowClick fires on single click, onRowDoubleClick on double click. rowClassName lets you apply dynamic CSS classes per row based on its data."
+        code={`<Table
+  data={users}
+  columns={columns}
+  onRowClick={(item) => console.log("clicked", item)}
+  onRowDoubleClick={(item) => openDetail(item)}
+  rowClassName={(item) =>
+    item.status === "Inactive" ? "opacity-50" : ""
+  }
+/>`}
+      >
+        {(() => {
+          const [lastClick, setLastClick] = React.useState<string>("")
+          const [lastDbl, setLastDbl]     = React.useState<string>("")
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-3">
+              <div className="flex gap-4 text-xs text-muted-foreground">
+                <span>Last click: <strong className="text-foreground">{lastClick || "—"}</strong></span>
+                <span>Last double-click: <strong className="text-foreground">{lastDbl || "—"}</strong></span>
+              </div>
+              <Table
+                data={USER_DATA.slice(0, 6)}
+                columns={userColumns}
+                onRowClick={(item) => setLastClick(item.name)}
+                onRowDoubleClick={(item) => setLastDbl(item.name)}
+                rowClassName={(item) => item.status === "Inactive" ? "opacity-50" : ""}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Column Visibility ── */}
+      <Section id="columnvisibility"><Playground
+        title="Column Visibility"
+        description="Pass columnVisibility (a Record of column key → boolean) and onColumnVisibilityChange to show a Columns dropdown in the toolbar. Users can toggle individual columns on or off."
+        code={`const [visibility, setVisibility] = React.useState({
+  name: true, role: true, department: true, joined: false, status: true,
+})
+
+<Table
+  data={users}
+  columns={columns}
+  columnVisibility={visibility}
+  onColumnVisibilityChange={setVisibility}
+/>`}
+      >
+        {(() => {
+          const [visibility, setVisibility] = React.useState<Record<string, boolean>>({
+            name: true, role: true, department: true, joined: false, status: true,
+          })
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "joined",     title: "Joined",     type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+          return (
+            <Table
+              data={USER_DATA.slice(0, 6)}
+              columns={userColumns}
+              columnVisibility={visibility}
+              onColumnVisibilityChange={setVisibility}
+            />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Export ── */}
+      <Section id="exportable"><Playground
+        title="Export"
+        description="Set exportable to show an Export dropdown in the toolbar with CSV, EXCEL, and PDF options. Wire up onExport to handle each format."
+        code={`<Table
+  data={users}
+  columns={columns}
+  exportable
+  onExport={(type) => {
+    if (type === "csv")   exportToCsv(data)
+    if (type === "excel") exportToExcel(data)
+    if (type === "pdf")   exportToPdf(data)
+  }}
+/>`}
+      >
+        {(() => {
+          const [lastExport, setLastExport] = React.useState<string>("")
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-3">
+              {lastExport && (
+                <div className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-xs text-success">
+                  onExport called with: <strong>{lastExport}</strong>
+                </div>
+              )}
+              <Table
+                data={USER_DATA.slice(0, 5)}
+                columns={userColumns}
+                exportable
+                onExport={(type) => setLastExport(type)}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Drag & Drop ── */}
+      <Section id="draggable"><Playground
+        title="Drag & Drop Row Reorder"
+        description="Set draggable to enable native HTML5 drag-and-drop row reordering. onRowReorder is called with the new data array after a drop. A ring highlight shows the drop target."
+        code={`const [rows, setRows] = React.useState(data)
+
+<Table
+  data={rows}
+  columns={columns}
+  draggable
+  onRowReorder={(reordered) => setRows(reordered)}
+/>`}
+      >
+        {(() => {
+          const [rows, setRows] = React.useState(COIN_DATA.slice(0, 6))
+          return (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Drag rows to reorder. Current order: {rows.map(r => r.symbol).join(" → ")}</p>
+              <Table
+                data={rows}
+                columns={COIN_COLUMNS}
+                draggable
+                onRowReorder={(reordered) => setRows(reordered as typeof rows)}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Keyboard Navigation ── */}
+      <Section id="keyboard"><Playground
+        title="Keyboard Navigation"
+        description="Set keyboardNavigation to enable Arrow Up / Arrow Down key navigation between rows. The focused row gets a ring highlight. Click a row or press arrow keys to move focus."
+        code={`<Table
+  data={users}
+  columns={columns}
+  keyboardNavigation
+/>`}
+      >
+        {(() => {
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Click a row then use ↑ ↓ arrow keys to navigate.</p>
+              <Table
+                data={USER_DATA.slice(0, 6)}
+                columns={userColumns}
+                keyboardNavigation
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Virtualized ── */}
+      <Section id="virtualized"><Playground
+        title="Virtualized"
+        description="Set virtualized to cap the table container height at 520px with overflow-y scroll. Useful for large datasets where you want a fixed-height scrollable table without pagination."
+        code={`<Table
+  data={largeDataset}
+  columns={columns}
+  virtualized
+/>`}
+      >
+        {(() => {
+          const bigData = Array.from({ length: 50 }, (_, i) => ({
+            ...USER_DATA[i % USER_DATA.length],
+            id: String(i + 1),
+            name: `${USER_DATA[i % USER_DATA.length].name} #${i + 1}`,
+          }))
+          const userColumns: Column<typeof bigData[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">50 rows — container is capped at 520px and scrollable.</p>
+              <Table data={bigData} columns={userColumns} virtualized />
+            </div>
           )
         })()}
       </Playground></Section>
@@ -212,7 +535,7 @@ export function TableDocs() {
             <Table
               data={USER_DATA.slice(0, 6)}
               columns={userColumns}
-              pagination
+              clientPagination
               itemsPerPage={5}
               defaultActions={{
                 baseUrl: "https://gist.github.com/d51f2bd7582b7d5c24e3a1008d82f3cf.git",
@@ -1255,6 +1578,153 @@ public function update(Request $request, $id)
                 onSuccess: (action, item) => alert(`${action}: ${(item as any).name}`),
               }}
             />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Variant: Zebra ── */}
+      <Section id="variant-zebra"><Playground
+        title="Variant: Zebra (Striped)"
+        description="Alternating row colors make long lists easier to scan. Even rows use bg-card, odd rows use bg-muted/40. Hover highlights with a subtle primary tint."
+        code={`<Table
+  data={data}
+  columns={columns}
+  variant="zebra"
+  searchable
+  clientPagination
+  itemsPerPage={5}
+/>`}
+      >
+        {(() => {
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "joined",     title: "Joined",     type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+          return (
+            <Table
+              data={USER_DATA}
+              columns={userColumns}
+              variant="zebra"
+              searchable
+              searchPlaceholder="Search users…"
+              clientPagination
+              itemsPerPage={5}
+            />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Variant: Card ── */}
+      <Section id="variant-card"><Playground
+        title="Variant: Card-Based"
+        description="Each row becomes an individual card with rounded corners, a border, and a subtle shadow. Hovering lifts the card slightly. Great for mobile-friendly or modern dashboard layouts."
+        code={`<Table
+  data={data}
+  columns={columns}
+  variant="card"
+  searchable
+  clientPagination
+  itemsPerPage={5}
+/>`}
+      >
+        {(() => {
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "joined",     title: "Joined",     type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+          return (
+            <Table
+              data={USER_DATA.slice(0, 6)}
+              columns={userColumns}
+              variant="card"
+              searchable
+              searchPlaceholder="Search users…"
+              clientPagination
+              itemsPerPage={5}
+            />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Variant: Glass ── */}
+      <Section id="variant-glass"><Playground
+        title="Variant: Glassmorphism"
+        description="Transparent background with backdrop blur, a subtle white/10 border, and a large shadow. Rows use white/5 hover tint. Pairs perfectly with gradient or image backgrounds — ideal for the Panel component."
+        code={`<Table
+  data={data}
+  columns={columns}
+  variant="glass"
+  searchable
+  clientPagination
+  itemsPerPage={5}
+/>`}
+      >
+        {(() => {
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "joined",     title: "Joined",     type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+          return (
+            <div
+              className="rounded-2xl p-4"
+              style={{ background: "linear-gradient(135deg, var(--primary) 0%, var(--info) 100%)" }}
+            >
+              <Table
+                data={USER_DATA.slice(0, 6)}
+                columns={userColumns}
+                variant="glass"
+                searchable
+                searchPlaceholder="Search users…"
+                clientPagination
+                itemsPerPage={5}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Variant: Soft UI ── */}
+      <Section id="variant-soft"><Playground
+        title="Variant: Soft UI (Neumorphism)"
+        description="Outer neumorphic box-shadow replaces hard borders. Row dividers are very subtle. Selected rows get an inset shadow for a pressed effect. Smooth and tactile — best on light backgrounds."
+        code={`<Table
+  data={data}
+  columns={columns}
+  variant="soft"
+  searchable
+  clientPagination
+  itemsPerPage={5}
+/>`}
+      >
+        {(() => {
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "joined",     title: "Joined",     type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+          return (
+            <div className="rounded-2xl bg-background p-4">
+              <Table
+                data={USER_DATA.slice(0, 6)}
+                columns={userColumns}
+                variant="soft"
+                searchable
+                searchPlaceholder="Search users…"
+                clientPagination
+                itemsPerPage={5}
+              />
+            </div>
           )
         })()}
       </Playground></Section>

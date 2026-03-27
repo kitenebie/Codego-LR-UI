@@ -30,7 +30,7 @@
  *     columns={columns}
  *     serverPagination={serverPagination}
  *     searchable
- *     pagination
+ *     clientPagination
  *     defaultActions={{
  *       baseUrl: "/api/users",
  *       editForm: [{ key: "name", label: "Name", type: "input" }],
@@ -59,7 +59,7 @@ import { ColorPicker } from "./color-picker"
 import { DateRangePicker } from "./date-range-picker"
 import { RichTextEditor } from "./rich-text-editor"
 import { FileUpload } from "./file-upload"
-import { Repeater } from "./repeater"
+import { Repeater, RepeaterField, RepeaterPayloadItem } from "./repeater"
 import { Textarea } from "./textarea"
 import { useToast, NotificationBanner, ToastPosition, ToastVariant } from "./notification"
 import { Input } from "./input"
@@ -160,25 +160,52 @@ export interface UseServerTableReturn<T> {
   columns: Column<T>[]
   currentPage: number
   pagination: ServerPagination | null
-  serverPagination: ServerPaginationProp | null   // pass directly as <Table serverPagination={...} />
+  serverPagination: ServerPaginationProp | null
   loading: boolean
   error: string | null
   goToPage: (page: number) => void
   reload: () => void
-  /** Manually trigger a data refresh (alias for reload, respects refresh option) */
   refresh: () => void
-  searchValue?: string
-  onSearchChange?: (value: string) => void
+  // Passthrough props — spread directly onto <Table />
+  searchValue: string
+  onSearchChange: (value: string) => void
+  page: number
+  onPageChange: (page: number) => void
+  sort: { key: string; direction: "asc" | "desc" }[]
+  onSortChange: (sort: { key: string; direction: "asc" | "desc" }[]) => void
+  onRowClick?: (item: T) => void
+  onRowDoubleClick?: (item: T) => void
+  rowClassName?: (item: T) => string
+  expandable?: boolean
+  renderExpanded?: (item: T) => React.ReactNode
+  columnVisibility?: Record<string, boolean>
+  onColumnVisibilityChange?: (visibility: Record<string, boolean>) => void
+  exportable?: boolean
+  onExport?: (type: "csv" | "excel" | "pdf") => void
+  virtualized?: boolean
+  draggable?: boolean
+  onRowReorder?: (data: T[]) => void
+  keyboardNavigation?: boolean
+  theme?: "light" | "dark" | "auto"
+  meta?: Record<string, any>
+  actions?: Record<string, (item: T) => void>
+  // Legacy Props
+  searchable?: boolean
+  searchPlaceholder?: string
+  clientPagination?: boolean
+  itemsPerPage?: number
+  selectable?: boolean
+  onBulkDelete?: (selectedIds: string[]) => void
+  bulkDeleteBaseUrl?: string
+  idKey?: keyof T
+  defaultActions?: DefaultActionsConfig<T>
+  className?: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Server Pagination Prop (passed to <Table serverPagination={...} />)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/**
- * Server-side pagination prop passed to the Table component
- * @interface ServerPaginationProp
- */
 export interface ServerPaginationProp {
   pagination: ServerPagination
   currentPage: number
@@ -313,8 +340,13 @@ export function useServerTable<T extends Record<string, any>>(
     goToPage: (page) => setCurrentPage(page),
     reload:   () => setTick((t) => t + 1),
     refresh:  () => setTick((t) => t + 1),
+    // Passthrough props
     searchValue,
     onSearchChange: handleSearchChange,
+    page: currentPage,
+    onPageChange: (page: number) => setCurrentPage(page),
+    sort: [],
+    onSortChange: () => {},
   }
 }
 
@@ -346,6 +378,7 @@ export type ViewFieldType =
   | "text-url-open-other-tabs"
   | "image-url"
   | "image-url-open-other-tabs"
+  | "repeater"
 
 /**
  * Configuration for a single field in action forms (edit/view modals)
@@ -369,6 +402,8 @@ export interface ActionField {
   step?: number
   /** Number of OTP digits for type="otp" */
   digits?: number
+  /** Field definitions for type="repeater" / viewType="repeater" */
+  repeaterFields?: RepeaterField[]
   /** Validation: regex or built-in preset ("email" | "url" | "numeric" | "alpha" | "alphanumeric") */
   validation?: RegExp | "email" | "url" | "numeric" | "alpha" | "alphanumeric"
   /** Custom message shown when validation fails */
@@ -752,7 +787,27 @@ function FieldRenderer({ field, value, onChange }: {
       return <FileUpload onFileSelect={(file) => onChange(file)} onFilesChange={(files) => { if (files.length > 1) onChange(files) }} />
 
     case "repeater": {
-      const items = Array.isArray(value) ? value : []
+      const items: RepeaterPayloadItem[] = Array.isArray(value) ? value : []
+      if (field.repeaterFields) {
+        // Structured mode: each row is a Record keyed by field.key
+        const rows: Record<string, any>[] = Array.isArray(value) ? value : []
+        return (
+          <Repeater
+            items={rows}
+            fields={field.repeaterFields}
+            onAdd={() => {
+              const blank: Record<string, any> = {}
+              field.repeaterFields!.forEach((f) => { blank[f.key] = "" })
+              onChange([...rows, blank])
+            }}
+            onRemove={(i) => onChange(rows.filter((_, idx) => idx !== i))}
+            onFieldChange={(i, key, val) => {
+              const next = rows.map((r, idx) => idx === i ? { ...r, [key]: val } : r)
+              onChange(next)
+            }}
+          />
+        )
+      }
       return (
         <Repeater
           items={items}
@@ -869,6 +924,59 @@ function ViewModal<T extends Record<string, any>>({
             {String(value).split("/").pop() ?? "Download"}
           </a>
         )
+
+      case "repeater": {
+        const rows: Record<string, any>[] = Array.isArray(value) ? value : []
+        if (!rows.length) return dash
+        const rFields = f.repeaterFields
+        return (
+          <div className="space-y-2">
+            {rows.map((row, ri) => (
+              <div key={ri} className="flex flex-wrap gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">{ri + 1}</span>
+                {rFields ? rFields.map((rf) => {
+                  const v = row[rf.key]
+                  if (rf.type === "image") return (
+                    <div key={rf.key} className="flex flex-col gap-1">
+                      {rf.label && <span className="text-[10px] text-muted-foreground">{rf.label}</span>}
+                      {v ? <img src={v} alt={rf.key} className="h-10 w-10 rounded-lg object-cover ring-1 ring-border" /> : dash}
+                    </div>
+                  )
+                  if (rf.type === "attachment") return (
+                    <div key={rf.key} className="flex flex-col gap-1">
+                      {rf.label && <span className="text-[10px] text-muted-foreground">{rf.label}</span>}
+                      {v ? (
+                        <a href={v} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/50 px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                        >
+                          <svg className="h-3 w-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          {String(v).split("/").pop()}
+                        </a>
+                      ) : dash}
+                    </div>
+                  )
+                  return (
+                    <div key={rf.key} className="flex flex-col gap-1">
+                      {rf.label && <span className="text-[10px] text-muted-foreground">{rf.label}</span>}
+                      <span className="text-sm">{v ?? "—"}</span>
+                    </div>
+                  )
+                }) : (
+                  // payload mode: row has { type, key, value }
+                  Object.entries(row).map(([k, v]) => (
+                    <div key={k} className="flex flex-col gap-1">
+                      <span className="text-[10px] text-muted-foreground">{k}</span>
+                      <span className="text-sm">{String(v)}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
 
       case "checkbox":
         return (
@@ -1228,7 +1336,7 @@ export interface TableProps<T> {
   // Legacy Props
   searchable?: boolean
   searchPlaceholder?: string
-  pagination?: boolean
+  clientPagination?: boolean
   itemsPerPage?: number
   selectable?: boolean
   onBulkDelete?: (selectedIds: string[]) => void
@@ -1243,6 +1351,15 @@ export interface TableProps<T> {
   defaultActions?: DefaultActionsConfig<T>
   /** Pass the serverPagination object from useServerTable to enable server-side pagination */
   serverPagination?: ServerPaginationProp | null
+  /**
+   * Visual variant of the table.
+   * - `"default"` — bordered card with subtle bg (original style)
+   * - `"zebra"` — alternating row colors for easy scanning
+   * - `"card"` — each row rendered as an individual card
+   * - `"glass"` — glassmorphism: transparent + backdrop blur
+   * - `"soft"` — neumorphic soft shadows, no hard borders
+   */
+  variant?: "default" | "zebra" | "card" | "glass" | "soft"
   className?: string
 }
 
@@ -1319,6 +1436,60 @@ function badgeClass(value: string) {
 type SortDir = "asc" | "desc" | null
 
 /**
+ * Inspects a key + sample value and returns a best-guess ActionField.
+ * Used when editForm / viewForm are not explicitly provided.
+ */
+function deriveField(key: string, sample: any): ActionField {
+  const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  const base: ActionField = { key, label }
+
+  // boolean → toggle
+  if (typeof sample === "boolean") return { ...base, type: "toggle", viewType: "toggle" }
+
+  // number → input[number]
+  if (typeof sample === "number") return { ...base, inputType: "number" }
+
+  // array → tag-input (simple string arrays) or plain text
+  if (Array.isArray(sample)) {
+    if (sample.length === 0 || typeof sample[0] === "string")
+      return { ...base, type: "tag-input" }
+    return base
+  }
+
+  if (typeof sample === "string") {
+    // image URL heuristic
+    if (/\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(sample))
+      return { ...base, type: "input", viewType: "image" }
+
+    // attachment URL heuristic
+    if (/\.(pdf|docx?|xlsx?|csv|zip|pptx?)(\?.*)?$/i.test(sample))
+      return { ...base, type: "input", viewType: "attachment" }
+
+    // generic URL
+    if (/^https?:\/\//.test(sample))
+      return { ...base, type: "input", viewType: "text-url-open-other-tabs" }
+
+    // long text heuristic
+    if (sample.length > 120 || /\n/.test(sample))
+      return { ...base, type: "textarea" }
+
+    // key name hints for password
+    if (/password|secret|token/i.test(key))
+      return { ...base, type: "password" }
+
+    // key name hints for email
+    if (/email/i.test(key))
+      return { ...base, inputType: "email" }
+
+    // key name hints for color
+    if (/color|colour/i.test(key) && /^#[0-9a-f]{3,8}$/i.test(sample))
+      return { ...base, type: "color-picker", viewType: "text" }
+  }
+
+  return base
+}
+
+/**
  * Data table component with sorting, filtering, pagination, and CRUD actions
  * 
  * @template T - The data type for table rows (must be a record with string keys)
@@ -1335,7 +1506,7 @@ type SortDir = "asc" | "desc" | null
  *     { key: "active", type: "toggle", onChange: handleToggle },
  *   ]}
  *   searchable
- *   pagination
+ *   clientPagination
  *   selectable
  *   onBulkDelete={handleBulkDelete}
  *   defaultActions={{
@@ -1348,9 +1519,14 @@ type SortDir = "asc" | "desc" | null
 export function Table<T extends Record<string, any>>({
   data,
   columns,
+  loading,
+  emptyState,
+  error: errorProp,
   searchable = false,
   searchPlaceholder = "Search...",
-  pagination = false,
+  searchValue: controlledSearch,
+  onSearchChange,
+  clientPagination = false,
   itemsPerPage = 10,
   selectable = false,
   onBulkDelete,
@@ -1358,15 +1534,38 @@ export function Table<T extends Record<string, any>>({
   bulkDeleteBaseUrl,
   defaultActions,
   serverPagination,
+  variant = "default",
   className,
+  onRowClick,
+  onRowDoubleClick,
+  rowClassName,
+  expandable = false,
+  renderExpanded,
+  columnVisibility,
+  onColumnVisibilityChange,
+  exportable = false,
+  onExport,
+  virtualized = false,
+  draggable = false,
+  onRowReorder,
+  keyboardNavigation = false,
 }: TableProps<T>) {
   const { toast } = useToast()
-  const [search, setSearch] = React.useState("")
+  const isControlledSearch = controlledSearch !== undefined
+  const [internalSearch, setInternalSearch] = React.useState("")
+  const search = isControlledSearch ? controlledSearch : internalSearch
+  const setSearch = (v: string) => {
+    if (!isControlledSearch) setInternalSearch(v)
+    onSearchChange?.(v)
+  }
   const [currentPage, setCurrentPage] = React.useState(1)
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [sortKey, setSortKey] = React.useState<string | null>(null)
   const [sortDir, setSortDir] = React.useState<SortDir>(null)
   const [bulkLoading, setBulkLoading] = React.useState(false)
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
+  const [dragOverId, setDragOverId] = React.useState<string | null>(null)
+  const [focusedRowIdx, setFocusedRowIdx] = React.useState<number>(-1)
 
   // ── Default actions modal state ───────────────────────────────────────────────
   const [viewItem,   setViewItem]   = React.useState<T | null>(null)
@@ -1385,18 +1584,22 @@ export function Table<T extends Record<string, any>>({
   // Auto-derive fields from first row keys when editForm/viewForm not provided
   const autoFields = React.useMemo((): ActionField[] => {
     if (!tableData.length) return []
-    return Object.keys(tableData[0]).map((k) => ({
-      key: k,
-      label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-    }))
+    const row = tableData[0]
+    return Object.keys(row).map((k) => deriveField(k, row[k]))
   }, [tableData])
 
   const editFields  = defaultActions?.editForm  ?? autoFields
   const viewFields  = defaultActions?.viewForm  ?? autoFields
 
+  // Apply column visibility filter
+  const visibleColumns = React.useMemo(() => {
+    if (!columnVisibility) return columns
+    return columns.filter((col) => columnVisibility[String(col.key)] !== false)
+  }, [columns, columnVisibility])
+
   // Append actions column when defaultActions is set
   const allColumns: Column<T>[] = React.useMemo(() => {
-    if (!defaultActions) return columns
+    if (!defaultActions) return visibleColumns
     const actionsCol: Column<T> = {
       key: "__actions__" as keyof T,
       title: "Actions",
@@ -1438,9 +1641,9 @@ export function Table<T extends Record<string, any>>({
       ),
     }
     return defaultActions.position === "first"
-      ? [actionsCol, ...columns]
-      : [...columns, actionsCol]
-  }, [columns, defaultActions])
+      ? [actionsCol, ...visibleColumns]
+      : [...visibleColumns, actionsCol]
+  }, [visibleColumns, defaultActions])
 
   const handleSort = (key: string) => {
     if (sortKey !== key) { setSortKey(key); setSortDir("asc"); return }
@@ -1473,13 +1676,24 @@ export function Table<T extends Record<string, any>>({
   const safePage = Math.min(currentPage, totalPages)
 
   const paginatedData = React.useMemo(() => {
-    if (!pagination) return filteredData
+    if (!clientPagination) return filteredData
     const start = (safePage - 1) * itemsPerPage
     return filteredData.slice(start, start + itemsPerPage)
-  }, [filteredData, pagination, safePage, itemsPerPage])
+  }, [filteredData, clientPagination, safePage, itemsPerPage])
 
   // Reset to page 1 on search
   React.useEffect(() => { setCurrentPage(1) }, [search])
+
+  // Keyboard navigation
+  React.useEffect(() => {
+    if (!keyboardNavigation) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocusedRowIdx((i) => Math.min(i + 1, paginatedData.length - 1)) }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setFocusedRowIdx((i) => Math.max(i - 1, 0)) }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [keyboardNavigation, paginatedData.length])
 
   const handleSelectAll = (checked: boolean) =>
     setSelectedIds(checked ? paginatedData.map((item) => String(item[idKey])) : [])
@@ -1558,6 +1772,13 @@ export function Table<T extends Record<string, any>>({
     <>
     <div className={cn("w-full space-y-3", className)}>
 
+      {/* Error state */}
+      {errorProp && (
+        <div className="rounded-xl border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
+          {errorProp}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         {searchable && (
@@ -1626,6 +1847,46 @@ export function Table<T extends Record<string, any>>({
             </button>
           )}
 
+          {exportable && (
+            <div className="relative group">
+              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
+                Export
+              </button>
+              <div className="absolute right-0 top-full mt-1 z-20 hidden group-hover:flex flex-col min-w-[110px] rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                {(["csv", "excel", "pdf"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => onExport?.(type)}
+                    className="px-4 py-2 text-xs text-left hover:bg-muted transition-colors capitalize"
+                  >
+                    {type.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {columnVisibility && onColumnVisibilityChange && (
+            <div className="relative group">
+              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
+                Columns
+              </button>
+              <div className="absolute right-0 top-full mt-1 z-20 hidden group-hover:flex flex-col min-w-[150px] rounded-xl border border-border bg-card shadow-lg overflow-hidden p-2 gap-1">
+                {columns.map((col) => (
+                  <label key={String(col.key)} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-muted cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={columnVisibility[String(col.key)] !== false}
+                      onChange={(e) => onColumnVisibilityChange({ ...columnVisibility, [String(col.key)]: e.target.checked })}
+                      className="accent-primary"
+                    />
+                    {col.title}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <span className="text-xs text-muted-foreground">
             {totalRows} {totalRows === 1 ? "row" : "rows"}
             {search && ` · filtered from ${tableData.length}`}
@@ -1633,13 +1894,36 @@ export function Table<T extends Record<string, any>>({
         </div>
       </div>
 
+      {/* Loading overlay */}
+      {loading && (
+        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm">Loading…</span>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="rounded-xl border border-border overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm">
-        <div className="w-full overflow-auto">
-          <table className="w-full caption-bottom text-sm">
+      {!loading && (
+      <div className={cn(
+        variant === "default" && "rounded-xl border border-border overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm",
+        variant === "zebra"   && "rounded-xl border border-border overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm",
+        variant === "card"    && "space-y-2",
+        variant === "glass"   && "rounded-2xl overflow-hidden border border-white/10 bg-background/30 backdrop-blur-xl shadow-xl",
+        variant === "soft"    && "rounded-2xl overflow-hidden bg-card",
+        variant === "soft"    && "[box-shadow:6px_6px_12px_hsl(var(--foreground)/0.07),-6px_-6px_12px_hsl(var(--background)/0.8)]",
+        virtualized && "max-h-[520px] overflow-y-auto"
+      )}>
+        <div className={cn("w-full overflow-auto", variant === "card" && "space-y-2")}>
+          <table className={cn("w-full caption-bottom text-sm", variant === "card" && "border-separate border-spacing-y-2")}>
 
             <thead>
-              <tr className="border-b border-border bg-muted/40">
+              <tr className={cn(
+                variant === "default" && "border-b border-border bg-muted/40",
+                variant === "zebra"   && "border-b border-border bg-muted/40",
+                variant === "card"    && "[&>th]:bg-transparent",
+                variant === "glass"   && "border-b border-white/10 bg-white/5",
+                variant === "soft"    && "border-b-0 bg-muted/30",
+              )}>
                 {selectable && (
                   <th className="h-11 w-[46px] px-4 text-left align-middle">
                     <Checkbox
@@ -1648,13 +1932,16 @@ export function Table<T extends Record<string, any>>({
                     />
                   </th>
                 )}
+                {expandable && <th className="h-11 w-8" />}
                 {allColumns.map((col, ci) => (
                   <th
                     key={`${String(col.key)}-${ci}`}
                     onClick={() => col.sortable && handleSort(String(col.key))}
                     className={cn(
                       "h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-muted-foreground select-none whitespace-nowrap",
-                      col.sortable && "cursor-pointer hover:text-foreground transition-colors"
+                      col.sortable && "cursor-pointer hover:text-foreground transition-colors",
+                      variant === "glass" && "text-foreground/70",
+                      variant === "soft"  && "text-muted-foreground/80",
                     )}
                   >
                     <span className="inline-flex items-center">
@@ -1670,32 +1957,83 @@ export function Table<T extends Record<string, any>>({
               {paginatedData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={allColumns.length + (selectable ? 1 : 0)}
+                    colSpan={allColumns.length + (selectable ? 1 : 0) + (expandable ? 1 : 0)}
                     className="h-32 text-center align-middle"
                   >
-                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                      <Search className="h-8 w-8 opacity-20" />
-                      <span className="text-sm">No results found</span>
-                      {search && (
-                        <button onClick={() => setSearch("")} className="text-xs text-primary hover:underline">
-                          Clear search
-                        </button>
-                      )}
-                    </div>
+                    {emptyState ?? (
+                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                        <Search className="h-8 w-8 opacity-20" />
+                        <span className="text-sm">No results found</span>
+                        {search && (
+                          <button onClick={() => setSearch("")} className="text-xs text-primary hover:underline">
+                            Clear search
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((item, i) => {
                   const id = String(item[idKey] || i)
                   const isSelected = selectedIds.includes(id)
+                  const isExpanded = expandedIds.has(id)
+                  const isFocused = keyboardNavigation && focusedRowIdx === i
                   return (
+                    <React.Fragment key={id}>
                     <tr
-                      key={id}
+                      draggable={draggable}
+                      tabIndex={keyboardNavigation ? 0 : undefined}
+                      onDragStart={draggable ? (e) => { e.dataTransfer.setData("text/plain", id) } : undefined}
+                      onDragOver={draggable ? (e) => { e.preventDefault(); setDragOverId(id) } : undefined}
+                      onDragLeave={draggable ? () => setDragOverId(null) : undefined}
+                      onDrop={draggable ? (e) => {
+                        e.preventDefault()
+                        setDragOverId(null)
+                        const fromId = e.dataTransfer.getData("text/plain")
+                        if (fromId === id) return
+                        setTableData((prev) => {
+                          const fromIdx = prev.findIndex((r) => String(r[idKey] || "") === fromId)
+                          const toIdx   = prev.findIndex((r) => String(r[idKey] || "") === id)
+                          if (fromIdx < 0 || toIdx < 0) return prev
+                          const next = [...prev]
+                          const [moved] = next.splice(fromIdx, 1)
+                          next.splice(toIdx, 0, moved)
+                          onRowReorder?.(next)
+                          return next
+                        })
+                      } : undefined}
+                      onClick={() => {
+                        if (expandable) setExpandedIds((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+                        onRowClick?.(item)
+                        if (keyboardNavigation) setFocusedRowIdx(i)
+                      }}
+                      onDoubleClick={() => onRowDoubleClick?.(item)}
                       className={cn(
-                        "border-b border-border/60 transition-colors last:border-0",
-                        isSelected
-                          ? "bg-primary/5 hover:bg-primary/8"
-                          : "hover:bg-muted/30"
+                        // default
+                        variant === "default" && "border-b border-border/60 transition-colors last:border-0",
+                        variant === "default" && (isSelected ? "bg-primary/5 hover:bg-primary/8" : "hover:bg-muted/30"),
+                        // zebra
+                        variant === "zebra" && "border-b border-border/40 transition-colors last:border-0",
+                        variant === "zebra" && (isSelected ? "bg-primary/8" : i % 2 === 0 ? "bg-card" : "bg-muted/40"),
+                        variant === "zebra" && !isSelected && "hover:bg-primary/5",
+                        // card
+                        variant === "card" && "rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-px",
+                        variant === "card" && (isSelected ? "border-primary/50 bg-primary/5" : ""),
+                        variant === "card" && "[&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl",
+                        // glass
+                        variant === "glass" && "border-b border-white/8 transition-colors last:border-0",
+                        variant === "glass" && (isSelected ? "bg-primary/15 hover:bg-primary/20" : "hover:bg-white/5"),
+                        // soft
+                        variant === "soft" && "transition-all",
+                        variant === "soft" && (isSelected
+                          ? "bg-primary/8 [box-shadow:inset_2px_2px_5px_hsl(var(--foreground)/0.06),inset_-2px_-2px_5px_hsl(var(--background)/0.7)]"
+                          : "hover:bg-muted/20"),
+                        variant === "soft" && "border-b border-border/30 last:border-0",
+                        (onRowClick || onRowDoubleClick || expandable) && "cursor-pointer",
+                        draggable && dragOverId === id && "ring-2 ring-inset ring-primary/40",
+                        isFocused && "ring-2 ring-inset ring-ring",
+                        rowClassName?.(item)
                       )}
                     >
                       {selectable && (
@@ -1704,6 +2042,11 @@ export function Table<T extends Record<string, any>>({
                             checked={isSelected}
                             onChange={(e) => handleSelect(id, e.target.checked)}
                           />
+                        </td>
+                      )}
+                      {expandable && (
+                        <td className="w-8 px-2 py-3 align-middle">
+                          <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
                         </td>
                       )}
                       {allColumns.map((col, ci) => (
@@ -1803,6 +2146,14 @@ export function Table<T extends Record<string, any>>({
                         </td>
                       ))}
                     </tr>
+                    {expandable && isExpanded && renderExpanded && (
+                      <tr className="bg-muted/20 border-b border-border/60">
+                        <td colSpan={allColumns.length + (selectable ? 1 : 0) + 1} className="px-6 py-3">
+                          {renderExpanded(item)}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   )
                 })
               )}
@@ -1810,9 +2161,10 @@ export function Table<T extends Record<string, any>>({
           </table>
         </div>
       </div>
+      )}
 
       {/* Client-side pagination */}
-      {pagination && !serverPagination && totalPages > 1 && (
+      {clientPagination && !serverPagination && totalPages > 1 && (
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">
             Showing {(safePage - 1) * itemsPerPage + 1}–{Math.min(safePage * itemsPerPage, filteredData.length)} of {filteredData.length}

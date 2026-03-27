@@ -119,6 +119,8 @@ export function TableDocs() {
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
       { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
       { id: "fileuploadform",    label: "File Upload in editForm" },
+      { id: "repeaterfields",     label: "Repeater Fields" },
+      { id: "autoderive",         label: "Auto-Derive Fields" },
       { id: "variant-zebra",     label: "Variant: Zebra" },
       { id: "variant-card",      label: "Variant: Card" },
       { id: "variant-glass",     label: "Variant: Glass" },
@@ -1578,6 +1580,237 @@ public function update(Request $request, $id)
                 onSuccess: (action, item) => alert(`${action}: ${(item as any).name}`),
               }}
             />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Repeater Fields ── */}
+      <Section id="repeaterfields"><Playground
+        title="Repeater Fields"
+        description="Use type='repeater' with repeaterFields in editForm to let users add/remove structured rows. Each row renders fields based on type: 'input', 'image' (URL + preview), or 'attachment' (URL + link). In viewForm, use viewType='repeater' with the same repeaterFields to display each row read-only."
+        code={`<Table
+  data={employees}
+  columns={columns}
+  defaultActions={{
+    baseUrl: "/api/employees",
+    editFormGrid: 1,
+    editForm: [
+      { key: "name",        label: "Name",        required: true },
+      {
+        key: "documents",
+        label: "Documents",
+        type: "repeater",
+        repeaterFields: [
+          { type: "input",      key: "title",   label: "Title" },
+          { type: "image",      key: "photo",   label: "Photo" },
+          { type: "attachment", key: "file",    label: "File" },
+        ],
+      },
+    ],
+    viewFormGrid: 1,
+    viewForm: [
+      { key: "name",      label: "Name" },
+      {
+        key: "documents",
+        label: "Documents",
+        viewType: "repeater",
+        repeaterFields: [
+          { type: "input",      key: "title",   label: "Title" },
+          { type: "image",      key: "photo",   label: "Photo" },
+          { type: "attachment", key: "file",    label: "File" },
+        ],
+      },
+    ],
+  }}
+/>`}
+      >
+        {(() => {
+          const empData = [
+            {
+              id: "1",
+              name: "Alice Johnson",
+              role: "Engineer",
+              status: "Active",
+              documents: [
+                { title: "Resume",      photo: "https://i.pravatar.cc/150?img=1", file: "https://example.com/resume.pdf" },
+                { title: "Certificate", photo: "https://i.pravatar.cc/150?img=2", file: "https://example.com/cert.xlsx" },
+              ],
+            },
+            {
+              id: "2",
+              name: "Bob Martinez",
+              role: "Designer",
+              status: "Pending",
+              documents: [
+                { title: "Portfolio", photo: "https://i.pravatar.cc/150?img=3", file: "https://example.com/portfolio.pdf" },
+              ],
+            },
+            {
+              id: "3",
+              name: "Carol White",
+              role: "Manager",
+              status: "Active",
+              documents: [],
+            },
+          ]
+          const empColumns: Column<typeof empData[0]>[] = [
+            { key: "name",   title: "Name",   render: (item) => <ProfileCell name={item.name} email={`${item.name.split(" ")[0].toLowerCase()}@acme.com`} avatar={`https://i.pravatar.cc/150?img=${item.id}`} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <Table
+              data={empData}
+              columns={empColumns}
+              defaultActions={{
+                baseUrl: "https://gist.github.com/d51f2bd7582b7d5c24e3a1008d82f3cf.git",
+                editFormGrid: 1,
+                editForm: [
+                  { key: "name", label: "Name", required: true },
+                  { key: "role", label: "Role", type: "select", options: ["Engineer", "Designer", "Manager", "Analyst"] },
+                  {
+                    key: "documents",
+                    label: "Documents",
+                    type: "repeater",
+                    repeaterFields: [
+                      { type: "input",      key: "title", label: "Title" },
+                      { type: "image",      key: "photo", label: "Photo URL" },
+                      { type: "attachment", key: "file",  label: "File URL" },
+                    ],
+                  },
+                ],
+                viewFormGrid: 1,
+                viewForm: [
+                  { key: "name",   label: "Name" },
+                  { key: "role",   label: "Role" },
+                  { key: "status", label: "Status" },
+                  {
+                    key: "documents",
+                    label: "Documents",
+                    viewType: "repeater",
+                    repeaterFields: [
+                      { type: "input",      key: "title", label: "Title" },
+                      { type: "image",      key: "photo", label: "Photo" },
+                      { type: "attachment", key: "file",  label: "File" },
+                    ],
+                  },
+                ],
+                onSuccess: (action, item) => alert(`${action}: ${(item as any).name}`),
+              }}
+            />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Auto-Derive Fields ── */}
+      <Section id="autoderive"><Playground
+        title="Auto-Derive Fields"
+        description="When editForm and viewForm are omitted, the table inspects the first row's values and automatically picks the right field type. Booleans become toggles, numbers become number inputs, image/attachment/generic URLs get the correct viewType, long strings become textareas, and key name hints (email, password, color) are also detected."
+        code={`// No editForm or viewForm needed — fields are auto-derived from row values
+<Table
+  data={products}
+  columns={columns}
+  defaultActions={{
+    baseUrl: "/api/products",
+    // editForm and viewForm intentionally omitted
+  }}
+/>
+
+// Auto-derive rules:
+// boolean          → type: "toggle",      viewType: "toggle"
+// number           → inputType: "number"
+// string[]         → type: "tag-input"
+// URL ending .jpg/.png/etc → viewType: "image"
+// URL ending .pdf/.xlsx/etc → viewType: "attachment"
+// generic https:// URL → viewType: "text-url-open-other-tabs"
+// string length > 120 or has \\n → type: "textarea"
+// key contains "email" → inputType: "email"
+// key contains "password/secret/token" → type: "password"
+// key contains "color" + hex value → type: "color-picker"`}
+      >
+        {(() => {
+          const productData = [
+            {
+              id: "1",
+              name: "Wireless Headphones",
+              price: 4999,
+              email: "support@acme.com",
+              in_stock: true,
+              featured: false,
+              brand_color: "#6366f1",
+              thumbnail: "https://i.pravatar.cc/150?img=10",
+              brochure: "https://example.com/brochure.pdf",
+              website: "https://example.com",
+              tags: ["audio", "wireless", "premium"],
+              description: "High-quality wireless headphones with active noise cancellation and 30-hour battery life.",
+              status: "Active",
+            },
+            {
+              id: "2",
+              name: "Mechanical Keyboard",
+              price: 3500,
+              email: "sales@acme.com",
+              in_stock: false,
+              featured: true,
+              brand_color: "#f59e0b",
+              thumbnail: "https://i.pravatar.cc/150?img=11",
+              brochure: "https://example.com/keyboard.pdf",
+              website: "https://example.com",
+              tags: ["keyboard", "mechanical", "rgb"],
+              description: "Tactile mechanical keyboard with RGB backlighting and hot-swappable switches.",
+              status: "Active",
+            },
+            {
+              id: "3",
+              name: "USB-C Hub",
+              price: 1200,
+              email: "info@acme.com",
+              in_stock: true,
+              featured: false,
+              brand_color: "#22c55e",
+              thumbnail: "https://i.pravatar.cc/150?img=12",
+              brochure: "https://example.com/hub.pdf",
+              website: "https://example.com",
+              tags: ["usb", "hub", "accessories"],
+              description: "7-in-1 USB-C hub with HDMI, SD card reader, and 100W PD charging.",
+              status: "Pending",
+            },
+          ]
+          const productColumns: Column<typeof productData[0]>[] = [
+            { key: "thumbnail",  title: "Image",    type: "image" },
+            { key: "name",       title: "Name",     type: "text",  sortable: true },
+            { key: "price",      title: "Price",    type: "text",  sortable: true },
+            { key: "in_stock",   title: "In Stock", type: "toggle", onChange: (item, v) => alert(`${item.name}: in_stock = ${v}`) },
+            { key: "status",     title: "Status",   type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-info/30 bg-info/5 px-4 py-3 text-xs text-info space-y-1">
+                <p className="font-semibold">Click View or Edit — fields are auto-derived from row values:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li><code className="font-mono bg-info/10 px-1 rounded">price</code> → number input</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">email</code> → email input (key hint)</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">in_stock / featured</code> → toggle</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">brand_color</code> → color picker (key + hex hint)</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">thumbnail</code> → viewType: image</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">brochure</code> → viewType: attachment</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">website</code> → viewType: text-url-open-other-tabs</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">tags</code> → tag-input</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">description</code> → textarea (length &gt; 120)</li>
+                </ul>
+              </div>
+              <Table
+                data={productData}
+                columns={productColumns}
+                defaultActions={{
+                  baseUrl: "https://gist.github.com/d51f2bd7582b7d5c24e3a1008d82f3cf.git",
+                  modalWidth: "2xl",
+                  editFormGrid: 2,
+                  viewFormGrid: 2,
+                  onSuccess: (action, item) => alert(`${action}: ${(item as any).name}`),
+                }}
+              />
+            </div>
           )
         })()}
       </Playground></Section>

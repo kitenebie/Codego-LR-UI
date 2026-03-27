@@ -48,7 +48,7 @@ function RepeaterFieldRenderer({
             <img src={value} alt={field.key} className="h-10 w-10 rounded-lg object-cover ring-1 ring-border shrink-0" />
           )}
           <Input
-            inputType="text"
+            inputMode="text"
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder ?? "Image URL"}
@@ -75,7 +75,7 @@ function RepeaterFieldRenderer({
             </a>
           )}
           <Input
-            inputType="text"
+            inputMode="text"
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder ?? "Attachment URL"}
@@ -89,7 +89,7 @@ function RepeaterFieldRenderer({
     <div className="flex flex-col gap-1.5">
       {field.label && <span className="text-xs font-medium text-muted-foreground">{field.label}</span>}
       <Input
-        inputType="text"
+        inputMode="text"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={field.placeholder ?? field.key}

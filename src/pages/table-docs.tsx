@@ -1568,6 +1568,141 @@ return (
         })()}
       </Playground></Section>
 
+      {/* ── columnVisibilityIcon & filterableIcon ── */}
+      <Section id="toolbaricons"><Playground
+        title="columnVisibilityIcon & filterableIcon"
+        description="Pass columnVisibilityIcon to replace the 'Columns' text label with a custom icon. Pass filterBar (from useServerTable) + filterableIcon to add a toggle button that shows/hides the filter bar — the icon replaces the 'Filter' text. Both buttons highlight with a primary tint when active."
+        code={`import { Columns3, SlidersHorizontal } from "lucide-react"
+
+// columnVisibilityIcon — replaces the 'Columns' text with an icon
+<Table
+  data={data}
+  columns={columns}
+  columnVisibility={visibility}
+  onColumnVisibilityChange={setVisibility}
+  columnVisibilityIcon={<Columns3 className="h-4 w-4" />}
+/>
+
+// filterableIcon — adds a toggle button that shows/hides the filterBar
+const { data, columns, serverPagination, loading, filterBar } = useServerTable({
+  url: "/api/users",
+  filter: [
+    { key: "status", type: "select", options: ["Active", "Inactive"] },
+    { key: "is_admin", type: "toggle", label: "Admin only" },
+  ],
+  sort: ["name", "email"],
+})
+
+<Table
+  data={data}
+  columns={columns}
+  serverPagination={serverPagination}
+  loading={loading}
+  filterBar={filterBar}
+  filterableIcon={<SlidersHorizontal className="h-4 w-4" />}
+/>
+
+// Both together
+<Table
+  data={data}
+  columns={columns}
+  columnVisibility={visibility}
+  onColumnVisibilityChange={setVisibility}
+  columnVisibilityIcon={<Columns3 className="h-4 w-4" />}
+  filterBar={filterBar}
+  filterableIcon={<SlidersHorizontal className="h-4 w-4" />}
+/>`}
+      >
+        {(() => {
+          const [visibility, setVisibility] = React.useState<Record<string, boolean>>({
+            name: true, role: true, department: true, joined: true, status: true,
+          })
+
+          const SAMPLE = USER_DATA.slice(0, 6)
+          const [filterVals, setFilterVals] = React.useState({ status: "", is_admin: false })
+          const [sortKey, setSortKey] = React.useState("")
+          const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc")
+
+          const filtered = React.useMemo(() => {
+            let d = SAMPLE
+            if (filterVals.status)   d = d.filter((r) => r.status === filterVals.status)
+            if (filterVals.is_admin) d = d.filter((r) => r.role === "Engineer")
+            if (sortKey) {
+              d = [...d].sort((a, b) => {
+                const cmp = String((a as any)[sortKey]).localeCompare(String((b as any)[sortKey]), undefined, { numeric: true })
+                return sortDir === "asc" ? cmp : -cmp
+              })
+            }
+            return d
+          }, [filterVals, sortKey, sortDir])
+
+          const hasActive = filterVals.status || filterVals.is_admin || sortKey
+          const inputCls = "h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+
+          const filterBar = (
+            <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Status</span>
+                <select value={filterVals.status} onChange={(e) => setFilterVals((p) => ({ ...p, status: e.target.value }))}
+                  className={`${inputCls} min-w-[120px]`}>
+                  <option value="">All</option>
+                  {["Active", "Warning", "Inactive", "Pending"].map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <button type="button" role="switch" aria-checked={filterVals.is_admin}
+                  onClick={() => setFilterVals((p) => ({ ...p, is_admin: !p.is_admin }))}
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors ${filterVals.is_admin ? "bg-primary" : "bg-muted"}`}>
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${filterVals.is_admin ? "translate-x-4" : "translate-x-0"}`} />
+                </button>
+                <span className="text-xs font-medium">Engineers only</span>
+              </label>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sort by</span>
+                <div className="flex items-center gap-1.5">
+                  <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} className={`${inputCls} min-w-[110px]`}>
+                    <option value="">Default</option>
+                    {["name", "role", "department"].map((k) => <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>)}
+                  </select>
+                  {sortKey && (
+                    <button type="button" onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                      {sortDir === "asc" ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {hasActive && (
+                <button type="button" onClick={() => { setFilterVals({ status: "", is_admin: false }); setSortKey(""); setSortDir("asc") }}
+                  className="flex h-8 items-center gap-1.5 self-end rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              )}
+            </div>
+          )
+
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text", sortable: true },
+            { key: "department", title: "Department", type: "text", sortable: true },
+            { key: "joined",     title: "Joined",     type: "text", sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+
+          return (
+            <Table
+              data={filtered}
+              columns={userColumns}
+              columnVisibility={visibility}
+              onColumnVisibilityChange={setVisibility}
+              columnVisibilityIcon={<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>}
+              filterBar={filterBar}
+              filterableIcon={<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="11" x2="13" y1="18" y2="18"/></svg>}
+            />
+          )
+        })()}
+      </Playground></Section>
+
       {/* ── Avatar Stack ── */}
       <Section id="avatarstack"><Playground
         title="Avatar Stack Column"

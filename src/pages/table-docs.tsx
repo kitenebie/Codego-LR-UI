@@ -4,7 +4,7 @@ import { Table, Column, useServerTable } from "../components/ui/table"
 import { PropsTable } from "../components/ui/props-table"
 import { FileUpload } from "../components/ui/file-upload"
 import { Input } from "../components/ui/input"
-import { ShieldCheck, ShieldAlert, ShieldX, Star, Download, ChevronDown, Mail, Phone, MapPin } from "lucide-react"
+import { ShieldCheck, ShieldAlert, ShieldX, Star, Download, ChevronDown, ChevronUp, X, Mail, Phone, MapPin } from "lucide-react"
 import * as React from "react"
 import tableDocsData from "../components/docs/table.json"
 
@@ -115,6 +115,8 @@ export function TableDocs() {
       { id: "refreshinterval",   label: "Auto-Refresh & onReload" },
       { id: "hardreload",         label: "hardReload (External Trigger)" },
       { id: "servertablecolumns", label: "Server Table Column Overrides" },
+      { id: "servertablefilter",   label: "filter & sort (useServerTable)" },
+      { id: "toolbaricons",         label: "columnVisibilityIcon & filterableIcon" },
       { id: "avatarstack",      label: "Avatar Stack Column" },
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
       { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
@@ -1375,6 +1377,194 @@ hardReloadRef.current()`}</pre>
             )},
           ]
           return <Table data={rows} columns={cols} />
+        })()}
+      </Playground></Section>
+
+      {/* ── filter & sort ── */}
+      <Section id="servertablefilter"><Playground
+        title="filter & sort (useServerTable)"
+        description="Pass filter to render a filter bar above the table. Each field appends its value as a query param on every request. Pass sort with an array of column keys to render a sort dropdown. Render filterBar from the hook above your Table. Supported filter types: input, select, checkbox, toggle, date, date-time, date-range."
+        code={`const { data, columns, serverPagination, loading, filterBar } = useServerTable({
+  url: "/api/users",
+  filter: [
+    { key: "id",            type: "input",      label: "ID",           placeholder: "Search ID…" },
+    { key: "gender",        type: "select",     label: "Gender",       options: ["Male", "Female", "Other"] },
+    { key: "is_admin",      type: "checkbox",   label: "Admin only" },
+    { key: "is_allowed",    type: "toggle",     label: "Allowed only" },
+    { key: "created_at",    type: "date",       label: "Created date" },
+    { key: "verified_date", type: "date-range", label: "Verified range" },
+  ],
+  sort: ["name", "age", "address"],
+})
+
+// Render filterBar above the table
+return (
+  <div className="space-y-3">
+    {filterBar}
+    <Table data={data} columns={columns} serverPagination={serverPagination} loading={loading} />
+  </div>
+)
+
+// Laravel controller receives these query params:
+// GET /api/users?id=1&gender=Male&is_admin=1&created_at=2024-01-01
+//               &verified_date_from=2024-01-01&verified_date_to=2024-12-31
+//               &sort=name&direction=asc&page=1`}
+      >
+        {(() => {
+          const SAMPLE_USERS = [
+            { id: "1",  name: "Alice Johnson",  gender: "Female", age: 28, address: "New York",     is_admin: true,  is_allowed: true,  created_at: "2024-01-15", verified_date: "2024-02-01", status: "Active"   },
+            { id: "2",  name: "Bob Martinez",   gender: "Male",   age: 34, address: "Los Angeles",  is_admin: false, is_allowed: true,  created_at: "2024-02-20", verified_date: "2024-03-10", status: "Active"   },
+            { id: "3",  name: "Carol White",    gender: "Female", age: 25, address: "Chicago",      is_admin: false, is_allowed: false, created_at: "2024-03-05", verified_date: "2024-04-15", status: "Pending"  },
+            { id: "4",  name: "David Kim",      gender: "Male",   age: 41, address: "Houston",      is_admin: true,  is_allowed: true,  created_at: "2024-04-12", verified_date: "2024-05-20", status: "Active"   },
+            { id: "5",  name: "Eva Chen",       gender: "Female", age: 30, address: "Phoenix",      is_admin: false, is_allowed: true,  created_at: "2024-05-18", verified_date: "2024-06-01", status: "Warning"  },
+            { id: "6",  name: "Frank Lee",      gender: "Male",   age: 22, address: "Philadelphia", is_admin: false, is_allowed: false, created_at: "2024-06-22", verified_date: "2024-07-10", status: "Inactive" },
+            { id: "7",  name: "Grace Park",     gender: "Female", age: 37, address: "San Antonio",  is_admin: true,  is_allowed: true,  created_at: "2024-07-08", verified_date: "2024-08-05", status: "Active"   },
+            { id: "8",  name: "Henry Brown",    gender: "Male",   age: 29, address: "San Diego",    is_admin: false, is_allowed: true,  created_at: "2024-08-14", verified_date: "2024-09-12", status: "Active"   },
+          ]
+
+          // Simulate filter/sort locally for the demo
+          const [filterVals, setFilterVals] = React.useState<Record<string, any>>({
+            id: "", gender: "", is_admin: false, is_allowed: false,
+            created_at: "", verified_date: { from: "", to: "" },
+          })
+          const [sortKey, setSortKey]   = React.useState("")
+          const [sortDir, setSortDir]   = React.useState<"asc" | "desc">("asc")
+
+          const filtered = React.useMemo(() => {
+            let d = SAMPLE_USERS
+            if (filterVals.id)        d = d.filter((r) => r.id.includes(filterVals.id))
+            if (filterVals.gender)    d = d.filter((r) => r.gender === filterVals.gender)
+            if (filterVals.is_admin)  d = d.filter((r) => r.is_admin)
+            if (filterVals.is_allowed) d = d.filter((r) => r.is_allowed)
+            if (filterVals.created_at) d = d.filter((r) => r.created_at >= filterVals.created_at)
+            if (filterVals.verified_date?.from) d = d.filter((r) => r.verified_date >= filterVals.verified_date.from)
+            if (filterVals.verified_date?.to)   d = d.filter((r) => r.verified_date <= filterVals.verified_date.to)
+            if (sortKey) {
+              d = [...d].sort((a, b) => {
+                const av = (a as any)[sortKey] ?? ""
+                const bv = (b as any)[sortKey] ?? ""
+                const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true })
+                return sortDir === "asc" ? cmp : -cmp
+              })
+            }
+            return d
+          }, [filterVals, sortKey, sortDir])
+
+          const hasActive = filterVals.id || filterVals.gender || filterVals.is_admin ||
+            filterVals.is_allowed || filterVals.created_at ||
+            filterVals.verified_date?.from || filterVals.verified_date?.to || sortKey
+
+          const clearAll = () => {
+            setFilterVals({ id: "", gender: "", is_admin: false, is_allowed: false, created_at: "", verified_date: { from: "", to: "" } })
+            setSortKey("")
+            setSortDir("asc")
+          }
+
+          const cols: Column<typeof SAMPLE_USERS[0]>[] = [
+            { key: "id",     title: "ID",      type: "text",  sortable: true },
+            { key: "name",   title: "Name",    type: "text",  sortable: true },
+            { key: "gender", title: "Gender",  type: "text",  sortable: true },
+            { key: "age",    title: "Age",     type: "text",  sortable: true },
+            { key: "address",title: "Address", type: "text",  sortable: true },
+            { key: "is_admin",   title: "Admin",   type: "checkbox", onChange: () => {} },
+            { key: "is_allowed", title: "Allowed", type: "toggle",   onChange: () => {} },
+            { key: "status", title: "Status",  type: "badge", sortable: true },
+          ]
+
+          const inputCls = "h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+          const labelCls = "text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+
+          return (
+            <div className="space-y-3">
+              {/* Filter bar */}
+              <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+                {/* input */}
+                <div className="flex flex-col gap-1">
+                  <span className={labelCls}>ID</span>
+                  <input type="text" value={filterVals.id} placeholder="Search ID…"
+                    onChange={(e) => setFilterVals((p) => ({ ...p, id: e.target.value }))}
+                    className={`${inputCls} min-w-[100px]`} />
+                </div>
+                {/* select */}
+                <div className="flex flex-col gap-1">
+                  <span className={labelCls}>Gender</span>
+                  <select value={filterVals.gender}
+                    onChange={(e) => setFilterVals((p) => ({ ...p, gender: e.target.value }))}
+                    className={`${inputCls} min-w-[110px]`}>
+                    <option value="">All</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                {/* checkbox */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={filterVals.is_admin}
+                    onChange={(e) => setFilterVals((p) => ({ ...p, is_admin: e.target.checked }))}
+                    className="h-4 w-4 rounded accent-primary" />
+                  <span className="text-xs font-medium">Admin only</span>
+                </label>
+                {/* toggle */}
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <button type="button" role="switch" aria-checked={filterVals.is_allowed}
+                    onClick={() => setFilterVals((p) => ({ ...p, is_allowed: !p.is_allowed }))}
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors ${filterVals.is_allowed ? "bg-primary" : "bg-muted"}`}>
+                    <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${filterVals.is_allowed ? "translate-x-4" : "translate-x-0"}`} />
+                  </button>
+                  <span className="text-xs font-medium">Allowed only</span>
+                </label>
+                {/* date */}
+                <div className="flex flex-col gap-1">
+                  <span className={labelCls}>Created date</span>
+                  <input type="date" value={filterVals.created_at}
+                    onChange={(e) => setFilterVals((p) => ({ ...p, created_at: e.target.value }))}
+                    className={inputCls} />
+                </div>
+                {/* date-range */}
+                <div className="flex flex-col gap-1">
+                  <span className={labelCls}>Verified range</span>
+                  <div className="flex items-center gap-1.5">
+                    <input type="date" value={filterVals.verified_date?.from ?? ""}
+                      onChange={(e) => setFilterVals((p) => ({ ...p, verified_date: { ...p.verified_date, from: e.target.value } }))}
+                      className={inputCls} />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <input type="date" value={filterVals.verified_date?.to ?? ""}
+                      onChange={(e) => setFilterVals((p) => ({ ...p, verified_date: { ...p.verified_date, to: e.target.value } }))}
+                      className={inputCls} />
+                  </div>
+                </div>
+                {/* sort */}
+                <div className="flex flex-col gap-1">
+                  <span className={labelCls}>Sort by</span>
+                  <div className="flex items-center gap-1.5">
+                    <select value={sortKey} onChange={(e) => setSortKey(e.target.value)}
+                      className={`${inputCls} min-w-[110px]`}>
+                      <option value="">Default</option>
+                      {["name", "age", "address"].map((k) => (
+                        <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>
+                      ))}
+                    </select>
+                    {sortKey && (
+                      <button type="button"
+                        onClick={() => setSortDir((d) => d === "asc" ? "desc" : "asc")}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        {sortDir === "asc"
+                          ? <ChevronDown className="h-3.5 w-3.5" />
+                          : <ChevronUp className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* clear */}
+                {hasActive && (
+                  <button type="button" onClick={clearAll}
+                    className="flex h-8 items-center gap-1.5 self-end rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+              <Table data={filtered} columns={cols} />
+            </div>
+          )
         })()}
       </Playground></Section>
 

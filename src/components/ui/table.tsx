@@ -148,6 +148,17 @@ export interface UseServerTableOptions {
   onSuccess?: (data: any[]) => void
   /** Called on fetch error */
   onError?: (error: Error) => void
+  /**
+   * Filter fields rendered above the table.
+   * Each field appends its value as a query param on every request.
+   * Supported types: "input" | "select" | "checkbox" | "toggle" | "date" | "date-time" | "date-range"
+   */
+  filter?: ServerTableFilterField[]
+  /**
+   * Sortable column keys. Renders a sort dropdown above the table.
+   * Appends sort=key&direction=asc|desc to every request.
+   */
+  sort?: string[]
 }
 
 /**
@@ -166,6 +177,8 @@ export interface UseServerTableReturn<T> {
   goToPage: (page: number) => void
   reload: () => void
   refresh: () => void
+  /** Rendered filter + sort bar — place above <Table /> */
+  filterBar: React.ReactNode
   // Passthrough props — spread directly onto <Table />
   searchValue: string
   onSearchChange: (value: string) => void
@@ -212,6 +225,20 @@ export interface ServerPaginationProp {
   goToPage: (page: number) => void
 }
 
+// ── ServerTable Filter Types ─────────────────────────────────────────────────
+
+export type ServerTableFilterType =
+  | "input" | "select" | "checkbox" | "toggle" | "date" | "date-time" | "date-range"
+
+export interface ServerTableFilterField {
+  key: string
+  type: ServerTableFilterType
+  label?: string
+  placeholder?: string
+  /** Options for type="select" */
+  options?: string[] | { label: string; value: string }[]
+}
+
 // ── useServerTable hook ───────────────────────────────────────────────────────
 
 /**
@@ -231,7 +258,7 @@ export interface ServerPaginationProp {
  * ```
  */
 export function useServerTable<T extends Record<string, any>>(
-  { url, params, encrypt, key, decryptPayloadLog, columnOverrides, debounce = 300, transform, manual = false, refresh: refreshEnabled = false, refreshInterval = 0, hardReload, onSuccess, onError }: UseServerTableOptions
+  { url, params, encrypt, key, decryptPayloadLog, columnOverrides, debounce = 300, transform, manual = false, refresh: refreshEnabled = false, refreshInterval = 0, hardReload, onSuccess, onError, filter: filterFields, sort: sortKeys }: UseServerTableOptions
 ): UseServerTableReturn<T> {
   const [data, setData]           = React.useState<T[]>([])
   const [columns, setColumns]     = React.useState<Column<T>[]>([])
@@ -242,6 +269,19 @@ export function useServerTable<T extends Record<string, any>>(
   const [tick, setTick]           = React.useState(0)
   const [searchValue, setSearchValue] = React.useState("")
   const debounceTimer = React.useRef<NodeJS.Timeout | undefined>(undefined)
+
+  // filter state: key → value
+  const [filterValues, setFilterValues] = React.useState<Record<string, any>>(() => {
+    const init: Record<string, any> = {}
+    filterFields?.forEach((f) => {
+      init[f.key] = f.type === "checkbox" || f.type === "toggle" ? false : ""
+    })
+    return init
+  })
+
+  // sort state
+  const [sortKey, setSortKey]   = React.useState<string>("")
+  const [sortDir, setSortDir]   = React.useState<"asc" | "desc">("asc")
 
   // Assign reload to hardReload ref so external callers can trigger it
   React.useEffect(() => {
@@ -255,6 +295,24 @@ export function useServerTable<T extends Record<string, any>>(
     return () => clearInterval(id)
   }, [refreshInterval])
 
+  // Build active filter params — skip empty/false values
+  const activeFilterParams = React.useMemo(() => {
+    const out: Record<string, any> = {}
+    filterFields?.forEach((f) => {
+      const v = filterValues[f.key]
+      if (f.type === "checkbox" || f.type === "toggle") {
+        if (v) out[f.key] = 1
+      } else if (f.type === "date-range") {
+        if (v?.from) out[`${f.key}_from`] = v.from
+        if (v?.to)   out[`${f.key}_to`]   = v.to
+      } else if (v !== "" && v !== null && v !== undefined) {
+        out[f.key] = v
+      }
+    })
+    if (sortKey) { out.sort = sortKey; out.direction = sortDir }
+    return out
+  }, [filterValues, sortKey, sortDir, filterFields])
+
   React.useEffect(() => {
     if (manual && tick === 0) return
     let cancelled = false
@@ -263,7 +321,7 @@ export function useServerTable<T extends Record<string, any>>(
 
     axios
       .get<ServerTableResponse<T>>(url, {
-        params: { ...params, page: currentPage, search: searchValue },
+        params: { ...params, ...activeFilterParams, page: currentPage, search: searchValue },
       })
       .then(({ data: res }) => {
         if (cancelled) return
@@ -316,16 +374,185 @@ export function useServerTable<T extends Record<string, any>>(
 
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, currentPage, tick, JSON.stringify(params), encrypt, decryptPayloadLog, JSON.stringify(columnOverrides), searchValue])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, currentPage, tick, JSON.stringify(params), JSON.stringify(activeFilterParams), encrypt, decryptPayloadLog, JSON.stringify(columnOverrides), searchValue])
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value)
     setCurrentPage(1)
     if (debounceTimer.current) clearTimeout(debounceTimer.current as NodeJS.Timeout)
-    debounceTimer.current = setTimeout(() => {
-      setTick((t) => t + 1)
-    }, debounce)
+    debounceTimer.current = setTimeout(() => setTick((t) => t + 1), debounce)
   }
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilterValues((prev) => ({ ...prev, [key]: value }))
+    setCurrentPage(1)
+    setTick((t) => t + 1)
+  }
+
+  const handleClearFilters = () => {
+    const reset: Record<string, any> = {}
+    filterFields?.forEach((f) => { reset[f.key] = f.type === "checkbox" || f.type === "toggle" ? false : "" })
+    setFilterValues(reset)
+    setSortKey("")
+    setSortDir("asc")
+    setCurrentPage(1)
+    setTick((t) => t + 1)
+  }
+
+  const hasActiveFilters = filterFields?.some((f) => {
+    const v = filterValues[f.key]
+    return f.type === "checkbox" || f.type === "toggle" ? !!v : v !== "" && v !== null && v !== undefined
+  }) || !!sortKey
+
+  // Build the filter bar ReactNode
+  const filterBar: React.ReactNode = (filterFields?.length || sortKeys?.length) ? (
+    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3">
+      {filterFields?.map((f) => {
+        const label = f.label ?? f.key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+        const value = filterValues[f.key]
+        const opts = (f.options ?? []).map((o) =>
+          typeof o === "string" ? { label: o, value: o } : o
+        ) as { label: string; value: string }[]
+
+        if (f.type === "checkbox") return (
+          <label key={f.key} className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={!!value}
+              onChange={(e) => handleFilterChange(f.key, e.target.checked)}
+              className="h-4 w-4 rounded accent-primary"
+            />
+            <span className="text-xs font-medium text-foreground">{label}</span>
+          </label>
+        )
+
+        if (f.type === "toggle") return (
+          <label key={f.key} className="flex items-center gap-2 cursor-pointer select-none">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!!value}
+              onClick={() => handleFilterChange(f.key, !value)}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors",
+                value ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                value ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+            <span className="text-xs font-medium text-foreground">{label}</span>
+          </label>
+        )
+
+        if (f.type === "select") return (
+          <div key={f.key} className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+            <select
+              value={value ?? ""}
+              onChange={(e) => handleFilterChange(f.key, e.target.value)}
+              className="h-8 min-w-[120px] rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+            >
+              <option value="">{f.placeholder ?? `All ${label}`}</option>
+              {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        )
+
+        if (f.type === "date" || f.type === "date-time") return (
+          <div key={f.key} className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+            <input
+              type={f.type === "date-time" ? "datetime-local" : "date"}
+              value={value ?? ""}
+              onChange={(e) => handleFilterChange(f.key, e.target.value)}
+              className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+            />
+          </div>
+        )
+
+        if (f.type === "date-range") return (
+          <div key={f.key} className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={value?.from ?? ""}
+                onChange={(e) => handleFilterChange(f.key, { ...value, from: e.target.value })}
+                className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              />
+              <span className="text-xs text-muted-foreground">–</span>
+              <input
+                type="date"
+                value={value?.to ?? ""}
+                onChange={(e) => handleFilterChange(f.key, { ...value, to: e.target.value })}
+                className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              />
+            </div>
+          </div>
+        )
+
+        // default: input
+        return (
+          <div key={f.key} className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+            <input
+              type="text"
+              value={value ?? ""}
+              placeholder={f.placeholder ?? `Filter ${label}…`}
+              onChange={(e) => handleFilterChange(f.key, e.target.value)}
+              className="h-8 min-w-[140px] rounded-lg border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+            />
+          </div>
+        )
+      })}
+
+      {/* Sort dropdown */}
+      {sortKeys?.length ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sort by</span>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={sortKey}
+              onChange={(e) => { setSortKey(e.target.value); setCurrentPage(1); setTick((t) => t + 1) }}
+              className="h-8 min-w-[120px] rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+            >
+              <option value="">Default</option>
+              {sortKeys.map((k) => (
+                <option key={k} value={k}>{k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+              ))}
+            </select>
+            {sortKey && (
+              <button
+                type="button"
+                onClick={() => { setSortDir((d) => d === "asc" ? "desc" : "asc"); setTick((t) => t + 1) }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title={sortDir === "asc" ? "Ascending" : "Descending"}
+              >
+                {sortDir === "asc"
+                  ? <ChevronUp className="h-3.5 w-3.5" />
+                  : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Clear button */}
+      {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={handleClearFilters}
+          className="flex h-8 items-center gap-1.5 self-end rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <X className="h-3 w-3" /> Clear
+        </button>
+      )}
+    </div>
+  ) : null
 
   return {
     data,
@@ -337,6 +564,7 @@ export function useServerTable<T extends Record<string, any>>(
       : null,
     loading,
     error,
+    filterBar,
     goToPage: (page) => setCurrentPage(page),
     reload:   () => setTick((t) => t + 1),
     refresh:  () => setTick((t) => t + 1),
@@ -1360,6 +1588,12 @@ export interface TableProps<T> {
    * - `"soft"` — neumorphic soft shadows, no hard borders
    */
   variant?: "default" | "zebra" | "card" | "glass" | "soft"
+  /** Custom icon for the column visibility toggle button. When provided, hides the "Columns" text label. */
+  columnVisibilityIcon?: React.ReactElement
+  /** Filter bar node (e.g. from useServerTable's filterBar). Rendered below the toolbar when visible. */
+  filterBar?: React.ReactNode
+  /** Custom icon for the filter toggle button. When provided, hides the "Filter" text label. */
+  filterableIcon?: React.ReactElement
   className?: string
 }
 
@@ -1543,6 +1777,9 @@ export function Table<T extends Record<string, any>>({
   renderExpanded,
   columnVisibility,
   onColumnVisibilityChange,
+  columnVisibilityIcon,
+  filterBar,
+  filterableIcon,
   exportable = false,
   onExport,
   virtualized = false,
@@ -1563,6 +1800,8 @@ export function Table<T extends Record<string, any>>({
   const [sortKey, setSortKey] = React.useState<string | null>(null)
   const [sortDir, setSortDir] = React.useState<SortDir>(null)
   const [bulkLoading, setBulkLoading] = React.useState(false)
+  const [bulkConfirm, setBulkConfirm] = React.useState<"selected" | "all" | null>(null)
+  const [filterBarOpen, setFilterBarOpen] = React.useState(false)
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
   const [dragOverId, setDragOverId] = React.useState<string | null>(null)
   const [focusedRowIdx, setFocusedRowIdx] = React.useState<number>(-1)
@@ -1711,7 +1950,7 @@ export function Table<T extends Record<string, any>>({
 
   const handleUnselectAll = () => setSelectedIds([])
 
-  const handleBulkDeleteSelected = async () => {
+  const execBulkDeleteSelected = async () => {
     if (!bulkDeleteBaseUrl || selectedIds.length === 0) {
       onBulkDelete?.(selectedIds)
       setSelectedIds([])
@@ -1734,7 +1973,7 @@ export function Table<T extends Record<string, any>>({
     }
   }
 
-  const handleDeleteAll = async () => {
+  const execDeleteAll = async () => {
     if (!bulkDeleteBaseUrl) return
     setBulkLoading(true)
     try {
@@ -1814,36 +2053,52 @@ export function Table<T extends Record<string, any>>({
                 Unselect all {selectedIds.length}
               </button>
 
+              {/* Select all unselected */}
+              {unselectedCount > 0 && (
+                <button
+                  onClick={handleSelectAllRecords}
+                  disabled={bulkLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                >
+                  Select all {unselectedCount}
+                </button>
+              )}
+
               {/* Delete selected */}
               <button
-                onClick={handleBulkDeleteSelected}
+                onClick={() => setBulkConfirm("selected")}
                 disabled={bulkLoading}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 border border-danger/20 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-40"
               >
                 {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 Delete {selectedIds.length} selected
               </button>
+
+              {/* Delete all */}
+              {bulkDeleteBaseUrl && (
+                <button
+                  onClick={() => setBulkConfirm("all")}
+                  disabled={bulkLoading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 border border-danger/20 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-40"
+                >
+                  {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  Delete all
+                </button>
+              )}
             </>
           )}
 
-          {selectable && unselectedCount > 0 && (
+          {filterBar && (
             <button
-              onClick={handleSelectAllRecords}
-              disabled={bulkLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
+              onClick={() => setFilterBarOpen((o) => !o)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                filterBarOpen
+                  ? "border-primary bg-primary/10 text-primary hover:bg-primary/20"
+                  : "border-border bg-muted/50 text-muted-foreground hover:bg-muted"
+              )}
             >
-              Select all {unselectedCount}
-            </button>
-          )}
-
-          {selectable && bulkDeleteBaseUrl && (
-            <button
-              onClick={handleDeleteAll}
-              disabled={bulkLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 border border-danger/20 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-40"
-            >
-              {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-              Delete all
+              {filterableIcon ?? "Filter"}
             </button>
           )}
 
@@ -1869,7 +2124,7 @@ export function Table<T extends Record<string, any>>({
           {columnVisibility && onColumnVisibilityChange && (
             <div className="relative group">
               <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
-                Columns
+                {columnVisibilityIcon ?? "Columns"}
               </button>
               <div className="absolute right-0 top-full mt-1 z-20 hidden group-hover:flex flex-col min-w-[150px] rounded-xl border border-border bg-card shadow-lg overflow-hidden p-2 gap-1">
                 {columns.map((col) => (
@@ -1893,6 +2148,11 @@ export function Table<T extends Record<string, any>>({
           </span>
         </div>
       </div>
+
+      {/* Filter bar */}
+      {filterBar && filterBarOpen && (
+        <div>{filterBar}</div>
+      )}
 
       {/* Loading overlay */}
       {loading && (
@@ -2327,6 +2587,42 @@ export function Table<T extends Record<string, any>>({
             }
           }}
         />
+      )}
+      {bulkConfirm && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setBulkConfirm(null) }}
+        >
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-base font-semibold">Confirm Delete</h2>
+              <button onClick={() => setBulkConfirm(null)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-sm text-muted-foreground">
+                {bulkConfirm === "selected"
+                  ? `Are you sure you want to delete ${selectedIds.length} selected record${selectedIds.length !== 1 ? "s" : ""}? This action cannot be undone.`
+                  : "Are you sure you want to delete all records? This action cannot be undone."
+                }
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setBulkConfirm(null)} disabled={bulkLoading}>Cancel</Button>
+              <Button variant="danger" size="sm" disabled={bulkLoading} onClick={async () => {
+                if (bulkConfirm === "selected") await execBulkDeleteSelected()
+                else await execDeleteAll()
+                setBulkConfirm(null)
+              }}>
+                {bulkLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                {bulkLoading ? "Deleting…" : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </>
   )

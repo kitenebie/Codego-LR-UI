@@ -1,6 +1,7 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import axios from "axios"
+import { api } from "@/src/lib/codego"
 import { Search, Pin, Tag, MoreHorizontal, AlertCircle, AlertTriangle, Info, X, ChevronLeft, ChevronRight, Eye, Pencil, Trash, Loader2 } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { Badge } from "./badge"
@@ -123,39 +124,45 @@ export function useServerBulletin({
     let cancelled = false
     setLoading(true)
     setError(null)
-    axios
-      .get<ServerTableResponse<any>>(url, { params: { ...params, page: currentPage } })
-      .then(({ data: res }) => {
+    api.get(url, { params: { ...params, page: currentPage } })
+      .then((res) => {
         if (cancelled) return
-        const payload = encrypt ? decryptLaravelPayload<ServerTableResponse<any>>(res as unknown as string, key) : res
+        let payload: any
+        try {
+          payload = encrypt ? decryptLaravelPayload<ServerTableResponse<any>>(res as unknown as string, key) : res
+        } catch (decryptErr: any) {
+          console.error("[useServerBulletin] decryption failed:", decryptErr?.message ?? decryptErr)
+          if (!cancelled) setError(decryptErr?.message ?? "Decryption failed")
+          return
+        }
         if (encrypt && decryptPayloadLog) console.log("[useServerBulletin] decrypted:", payload)
         const rows: any[] = Array.isArray(payload) ? payload : (payload.data ?? [])
         setItems(transform ? rows.map(transform) : rows as BulletinItem[])
         if (!Array.isArray(payload)) {
-        const rawTotal    = (payload as any).total    as number
-        const rawPerPage  = (payload as any).per_page  as number
-        const rawLastPage = (payload as any).last_page as number | undefined
-        const lastPage    = rawLastPage ?? Math.ceil(rawTotal / rawPerPage)
-        const pg: ServerPagination = payload.pagination ?? {
-          first_page_url: (payload as any).first_page_url ?? `${url}?page=1`,
-          last_page_url:  (payload as any).last_page_url  ?? `${url}?page=${lastPage}`,
-          last_page:      lastPage,
-          next_page_url:  (payload as any).next_page_url !== undefined
-            ? (payload as any).next_page_url
-            : currentPage < lastPage ? `${url}?page=${currentPage + 1}` : null,
-          prev_page_url:  (payload as any).prev_page_url !== undefined
-            ? (payload as any).prev_page_url
-            : currentPage > 1 ? `${url}?page=${currentPage - 1}` : null,
-          per_page: rawPerPage,
-          total:    rawTotal,
-          links:    (payload as any).links ?? [],
-        }
-        setPagination(pg)
+          const rawTotal    = (payload as any).total    as number
+          const rawPerPage  = (payload as any).per_page  as number
+          const rawLastPage = (payload as any).last_page as number | undefined
+          const lastPage    = rawLastPage ?? Math.ceil(rawTotal / rawPerPage)
+          const pg: ServerPagination = payload.pagination ?? {
+            first_page_url: (payload as any).first_page_url ?? `${url}?page=1`,
+            last_page_url:  (payload as any).last_page_url  ?? `${url}?page=${lastPage}`,
+            last_page:      lastPage,
+            next_page_url:  (payload as any).next_page_url !== undefined
+              ? (payload as any).next_page_url
+              : currentPage < lastPage ? `${url}?page=${currentPage + 1}` : null,
+            prev_page_url:  (payload as any).prev_page_url !== undefined
+              ? (payload as any).prev_page_url
+              : currentPage > 1 ? `${url}?page=${currentPage - 1}` : null,
+            per_page: rawPerPage,
+            total:    rawTotal,
+            links:    (payload as any).links ?? [],
+          }
+          setPagination(pg)
         }
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err?.response?.data?.message ?? err.message ?? "Request failed")
+        setError(err?.message ?? "Request failed")
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }

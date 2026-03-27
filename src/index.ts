@@ -249,3 +249,7 @@ export type { RequestConfig } from "@/src/lib/codego/types"
 
 // ─── storage ───────────────────────────────────────────────────────────────────
 export * from "@/src/core/storage/store"
+
+// ─── Decryption ──────────────────────────────────────────────────────────────
+export { decryptResponse, decryptLaravelPayload, getLaravelSecretKey, parseLaravelKey, parseLaravelEncryptedPayload } from "@/src/core/decryption/decode"
+export type { LaravelEncryptedPayload } from "@/src/core/decryption/decode"

@@ -103,6 +103,7 @@ import { PackagesDocs } from "./pages/packages-docs"
 import { AuthenticationDocs } from "./pages/authentication-docs"
 import { APIDocs } from "./pages/API-doc"
 import { StorageStoreDocs } from "./pages/storage-docs"
+import { DecryptionDocs } from "./pages/decryption-docs"
 
 const ROUTE_LABELS: Record<string, string> = {
   "/bulletin-board":        "Bulletin Board",
@@ -165,6 +166,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/settings":              "Settings",
   "/api":              "api",
   "/storage":              "storage",
+  "/decryption":           "Decryption",
 }
 
 function SidebarNavItem({
@@ -289,6 +291,7 @@ function AppShell() {
         <SidebarNavItem to="/settings" icon={Settings} label="Settings" />
         <SidebarNavItem to="/api" icon={RouteIcon} label="api" />
         <SidebarNavItem to="/storage" icon={Database} label="storage" />
+        <SidebarNavItem to="/decryption" icon={RouteIcon} label="Decryption" />
       </SidebarGroup>
     </>
   )
@@ -362,6 +365,7 @@ function AppShell() {
           <Route path="/settings" element={<SettingsDocs />} />
           <Route path="/api" element={<APIDocs />} />
           <Route path="/storage" element={<StorageStoreDocs />} />
+          <Route path="/decryption" element={<DecryptionDocs />} />
           <Route path="/avatarstack" element={<AvatarStackDocs />} />
           <Route path="/ui-builder" element={<UIBuilder />} />
           <Route path="/packages" element={<PackagesDocs />} />

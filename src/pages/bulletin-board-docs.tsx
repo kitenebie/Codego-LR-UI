@@ -247,7 +247,7 @@ export function BulletinBoardDocs() {
         <Playground
           title="useServerBulletin"
           description="Fetch paginated bulletin posts from a server. The hook returns items, loading, error, and serverPagination — pass serverPagination directly to BulletinBoard."
-          code={`const { items, loading, error, serverPagination, reload } = useServerBulletin({\n  url: "/api/bulletins",\n  // Optional: map raw API rows to BulletinItem shape\n  transform: (row) => ({\n    id: row.id,\n    title: row.subject,\n    body: row.content,\n    author: row.posted_by,\n    date: row.created_at,\n    category: row.department,\n    priority: row.level,\n    pinned: row.is_pinned,\n    tags: row.tags ?? [],\n  }),\n})\n\n<BulletinBoard\n  items={items}\n  loading={loading}\n  serverPagination={serverPagination}\n  preview\n  onEdit={(item) => openEditModal(item)}\n  deleteBaseUrl="/api/bulletins"\n  onDelete={() => reload()}\n  columns={3}\n  searchable\n  filterable\n  headerAction={\n    <Button size="sm" onClick={openCreateModal}>New Post</Button>\n  }\n/>`}
+          code={`const { items, loading, error, serverPagination, reload } = useServerBulletin({\n  url: "/api/bulletins",\n  // encrypt: true,          // enable if Laravel encrypts the response\n  // key: import.meta.env["VITE_LARAVEL_KEY"],  // or set VITE_LARAVEL_KEY in .env\n  // decryptPayloadLog: true, // log decrypted payload for debugging\n  transform: (row) => ({\n    id: row.id,\n    title: row.subject,\n    body: row.content,\n    author: row.posted_by,\n    date: row.created_at,\n    category: row.department,\n    priority: row.level,\n    pinned: row.is_pinned,\n    tags: row.tags ?? [],\n  }),\n})\n\n// Uses the codego api client — Bearer token auto-attached from localStorage\n<BulletinBoard\n  items={items}\n  loading={loading}\n  serverPagination={serverPagination}\n  preview\n  onEdit={(item) => openEditModal(item)}\n  deleteBaseUrl="/api/bulletins"\n  onDelete={() => reload()}\n  columns={3}\n  searchable\n  filterable\n  headerAction={\n    <Button size="sm" onClick={openCreateModal}>New Post</Button>\n  }\n/>`}
         >
           <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground space-y-2">
             <p className="font-semibold text-foreground">Live demo requires a real API endpoint.</p>
@@ -255,8 +255,16 @@ export function BulletinBoardDocs() {
             <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">{`const { items, loading, serverPagination, reload } = useServerBulletin({
   url: "/api/bulletins",
   params: { per_page: 9 },
+  // encrypt: true,
+  // key: import.meta.env["VITE_LARAVEL_KEY"],
+  transform: (row) => ({
+    id: row.id,
+    title: row.subject,
+    body: row.content,
+  }),
 })
 
+// Bearer token auto-attached from localStorage via codego api client
 <BulletinBoard
   items={items}
   loading={loading}
@@ -331,10 +339,10 @@ export function BulletinBoardDocs() {
 
       <Section id="hookprops">
         <PropsTable rows={[
-          { prop: "url",               type: "string",   required: true,  description: "API endpoint. Page param appended automatically: url?page=N." },
+          { prop: "url",               type: "string",   required: true,  description: "API endpoint. Uses the codego api client (Bearer token auto-attached from localStorage). Page param appended automatically: url?page=N." },
           { prop: "params",            type: "Record<string, string | number>", description: "Extra query params merged on every request." },
-          { prop: "encrypt",           type: "boolean",  description: "Expect a Laravel-encrypted response payload." },
-          { prop: "key",               type: "string",   description: "Laravel APP_KEY for decryption. Pass import.meta.env[\"VITE_LARAVEL_KEY\"]." },
+          { prop: "encrypt",           type: "boolean",  description: "Expect a Laravel-encrypted response payload. Supports plain array or paginated { data: [] } shape." },
+          { prop: "key",               type: "string",   description: "Laravel APP_KEY for decryption. Pass import.meta.env[\"VITE_LARAVEL_KEY\"] or set VITE_LARAVEL_KEY in .env." },
           { prop: "decryptPayloadLog", type: "boolean",  description: "Log the decrypted payload to the console." },
           { prop: "transform",         type: "(row: any) => BulletinItem", description: "Map a raw API row to a BulletinItem. Use when your API shape differs from BulletinItem." },
           { prop: "— items",           type: "BulletinItem[]", description: "Returned: fetched and optionally transformed items." },

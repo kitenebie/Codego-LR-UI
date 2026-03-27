@@ -619,6 +619,14 @@ function AnnouncementsPage() {
 }
 ```
 
+> **Note:** `useServerBulletin` uses the internal `codego` api client which automatically attaches the Bearer token from `localStorage.getItem("token")`. For encrypted Laravel responses, pass `encrypt: true` and set `VITE_LARAVEL_KEY` in your `.env`:
+>
+> ```
+> VITE_LARAVEL_KEY=base64:your_app_key_here
+> ```
+>
+> Or pass the key directly: `key: "base64:..."`. The response can be a plain array `[...]` or a paginated object `{ data: [...], total, per_page, ... }` — both are handled automatically.
+
 ---
 
 ## LeafletMap Props

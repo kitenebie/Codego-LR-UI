@@ -109,6 +109,8 @@ export function TableDocs() {
       { id: "servertablecolumns", label: "Server Table Column Overrides" },
       { id: "avatarstack",      label: "Avatar Stack Column" },
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
+      { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
+      { id: "fileuploadform",    label: "File Upload in editForm" },
       { id: "props",            label: "Props" },
     ]}>
 
@@ -1093,6 +1095,151 @@ hardReloadRef.current()`}</pre>
             { key: "verified", title: "Verified", type: "checkbox", onChange: (item, val) => patch(item.id, "verified", val) },
           ]
           return <Table data={rows} columns={cols} />
+        })()}
+      </Playground></Section>
+
+      {/* ── Bulk Actions ── */}
+      <Section id="bulkactions"><Playground
+        title="Bulk Actions & bulkDeleteBaseUrl"
+        description="Enable selectable to show row checkboxes. Use bulkDeleteBaseUrl to wire up built-in bulk delete endpoints. The toolbar shows: Select all N (unselected), Unselect all N (selected), Delete N selected, and Delete all buttons automatically."
+        code={`<Table
+  data={data}
+  columns={columns}
+  selectable
+  bulkDeleteBaseUrl="/api/certificate"
+  defaultActions={{
+    baseUrl: "/api/certificate",
+    onReload: reload,
+  }}
+/>
+
+// Laravel routes needed:
+// DELETE /api/certificate/delete/{ids}/selected  → deleteSelected()
+// DELETE /api/certificate/delete/all             → deleteAll()
+
+// Laravel controller example:
+public function deleteSelected(string $ids)
+{
+    $idArray = explode(',', $ids);
+    Certificate::whereIn('id', $idArray)->delete();
+    return response()->json(['message' => 'Deleted successfully']);
+}
+
+public function deleteAll()
+{
+    Certificate::query()->delete();
+    return response()->json(['message' => 'All records deleted']);
+}`}
+      >
+        {(() => {
+          const [rows, setRows] = React.useState(USER_DATA.slice(0, 8))
+          const userColumns: Column<typeof rows[0]>[] = [
+            { key: "name",   title: "User",   render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",   title: "Role",   type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-2">
+              <div className="rounded-xl border border-info/30 bg-info/5 px-4 py-3 text-xs text-info space-y-1">
+                <p className="font-semibold">Toolbar buttons shown when selectable is enabled:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li><code className="font-mono bg-info/10 px-1 rounded">Select all N</code> — selects all unselected rows</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">Unselect all N</code> — clears selection (shown when rows are selected)</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">Delete N selected</code> — calls DELETE /{'{'}ids{'}'}/selected (shown when rows are selected)</li>
+                  <li><code className="font-mono bg-info/10 px-1 rounded">Delete all</code> — calls DELETE /delete/all (shown when bulkDeleteBaseUrl is set)</li>
+                </ul>
+              </div>
+              <Table
+                data={rows}
+                columns={userColumns}
+                selectable
+                onBulkDelete={(ids) => {
+                  setRows((prev) => prev.filter((r) => !ids.includes(r.id)))
+                  alert(`Deleted IDs: ${ids.join(", ")}`)
+                }}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── File Upload in editForm ── */}
+      <Section id="fileuploadform"><Playground
+        title="File Upload in editForm"
+        description="Use type='file-upload' in editForm to add a file picker. When a new file is selected, the table sends multipart/form-data with _method=PUT. If no new file is chosen, the field is omitted so the server keeps the existing file. Use viewType='image' in viewForm to preview the stored image URL."
+        code={`<Table
+  data={certificates}
+  columns={columns}
+  defaultActions={{
+    baseUrl: "/api/certificate",
+    editFormGrid: 2,
+    editForm: [
+      { key: "image",       label: "Image",       type: "file-upload", colSpan: 2 },
+      { key: "name",        label: "Name",        required: true },
+      { key: "price",       label: "Price (Php)", required: true, validation: "numeric" },
+      { key: "description", label: "Description", type: "textarea",   colSpan: 2 },
+    ],
+    viewFormGrid: 2,
+    viewForm: [
+      { key: "image",       label: "Image",       viewType: "image", colSpan: 2, width: 160, height: 160 },
+      { key: "name",        label: "Name" },
+      { key: "price",       label: "Price (Php)" },
+      { key: "description", label: "Description", colSpan: 2 },
+    ],
+    onReload: reload,
+  }}
+/>
+
+// Laravel controller — handles both file update and no-file update:
+public function update(Request $request, $id)
+{
+    $cert = Certificate::findOrFail($id);
+    $data = $request->except(['_method', 'image']);
+    if ($request->hasFile('image')) {
+        // Delete old file if exists
+        if ($cert->image) Storage::delete($cert->image);
+        $data['image'] = $request->file('image')->store('public/images');
+    }
+    $cert->update($data);
+    return response()->json($cert);
+}`}
+      >
+        {(() => {
+          const certData = [
+            { id: "1", name: "Web Development",  price: "5000", description: "Full stack web development.",  image: "https://i.pravatar.cc/150?img=10", status: "Active"  },
+            { id: "2", name: "Data Science",      price: "7500", description: "Data science and ML cert.",    image: "https://i.pravatar.cc/150?img=11", status: "Active"  },
+            { id: "3", name: "UI/UX Design",      price: "4500", description: "User interface design cert.",  image: "https://i.pravatar.cc/150?img=12", status: "Pending" },
+          ]
+          const certColumns: Column<typeof certData[0]>[] = [
+            { key: "image",  title: "Image",  type: "image" },
+            { key: "name",   title: "Name",   type: "text",  sortable: true },
+            { key: "price",  title: "Price",  type: "text",  sortable: true },
+            { key: "status", title: "Status", type: "badge", sortable: true },
+          ]
+          return (
+            <Table
+              data={certData}
+              columns={certColumns}
+              defaultActions={{
+                baseUrl: "https://gist.github.com/d51f2bd7582b7d5c24e3a1008d82f3cf.git",
+                editFormGrid: 2,
+                editForm: [
+                  { key: "image",       label: "Image",       type: "file-upload", colSpan: 2 },
+                  { key: "name",        label: "Name",        required: true },
+                  { key: "price",       label: "Price (Php)", required: true, validation: "numeric" as const },
+                  { key: "description", label: "Description", type: "textarea",   colSpan: 2 },
+                ],
+                viewFormGrid: 2,
+                viewForm: [
+                  { key: "image",       label: "Image",       viewType: "image" as const, colSpan: 2, width: 160, height: 160 },
+                  { key: "name",        label: "Name" },
+                  { key: "price",       label: "Price (Php)" },
+                  { key: "description", label: "Description", colSpan: 2 },
+                ],
+                onSuccess: (action, item) => alert(`${action}: ${(item as any).name}`),
+              }}
+            />
+          )
         })()}
       </Playground></Section>
 

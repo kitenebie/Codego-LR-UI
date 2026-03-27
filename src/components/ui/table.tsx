@@ -1221,6 +1221,12 @@ export interface TableProps<T> {
   selectable?: boolean
   onBulkDelete?: (selectedIds: string[]) => void
   idKey?: keyof T
+  /**
+   * Base URL for built-in bulk delete actions.
+   * DELETE all   → `{bulkDeleteBaseUrl}/delete/all`
+   * DELETE selected → `{bulkDeleteBaseUrl}/delete/{ids}/selected`
+   */
+  bulkDeleteBaseUrl?: string
   /** When provided, appends an Actions column with View / Edit / Delete buttons */
   defaultActions?: DefaultActionsConfig<T>
   /** Pass the serverPagination object from useServerTable to enable server-side pagination */
@@ -1337,6 +1343,7 @@ export function Table<T extends Record<string, any>>({
   selectable = false,
   onBulkDelete,
   idKey = "id" as keyof T,
+  bulkDeleteBaseUrl,
   defaultActions,
   serverPagination,
   className,
@@ -1347,6 +1354,7 @@ export function Table<T extends Record<string, any>>({
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [sortKey, setSortKey] = React.useState<string | null>(null)
   const [sortDir, setSortDir] = React.useState<SortDir>(null)
+  const [bulkLoading, setBulkLoading] = React.useState(false)
 
   // ── Default actions modal state ───────────────────────────────────────────────
   const [viewItem,   setViewItem]   = React.useState<T | null>(null)
@@ -1469,6 +1477,55 @@ export function Table<T extends Record<string, any>>({
 
   const allSelected = paginatedData.length > 0 && selectedIds.length === paginatedData.length
 
+  const totalRows = serverPagination ? serverPagination.pagination.total : filteredData.length
+  const unselectedCount = totalRows - selectedIds.length
+
+  const handleSelectAllRecords = () =>
+    setSelectedIds(filteredData.map((item) => String(item[idKey])))
+
+  const handleUnselectAll = () => setSelectedIds([])
+
+  const handleBulkDeleteSelected = async () => {
+    if (!bulkDeleteBaseUrl || selectedIds.length === 0) {
+      onBulkDelete?.(selectedIds)
+      setSelectedIds([])
+      return
+    }
+    setBulkLoading(true)
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")
+      if (!csrfToken) throw new Error("[Table] CSRF token not found.")
+      const safeUrl = bulkDeleteBaseUrl.replace(/\/+$/, "")
+      await axios.delete(`${safeUrl}/delete/${selectedIds.join(",")}/selected`, { headers: { "X-CSRF-Token": csrfToken } })
+      setTableData((prev) => prev.filter((r) => !selectedIds.includes(String(r[idKey]))))
+      onBulkDelete?.(selectedIds)
+      setSelectedIds([])
+      defaultActions?.onReload?.()
+    } catch (err: any) {
+      console.error("[Table] Bulk delete selected failed:", err?.response?.data?.message ?? err.message)
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    if (!bulkDeleteBaseUrl) return
+    setBulkLoading(true)
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")
+      if (!csrfToken) throw new Error("[Table] CSRF token not found.")
+      const safeUrl = bulkDeleteBaseUrl.replace(/\/+$/, "")
+      await axios.delete(`${safeUrl}/delete/all`, { headers: { "X-CSRF-Token": csrfToken } })
+      setTableData([])
+      setSelectedIds([])
+      defaultActions?.onReload?.()
+    } catch (err: any) {
+      console.error("[Table] Delete all failed:", err?.response?.data?.message ?? err.message)
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   // Page pills — show at most 5
   const pagePills = React.useMemo(() => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -1511,18 +1568,54 @@ export function Table<T extends Record<string, any>>({
           </div>
         )}
 
-        <div className="flex items-center gap-2 ml-auto">
-          {selectable && onBulkDelete && selectedIds.length > 0 && (
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {selectable && selectedIds.length > 0 && (
+            <>
+              {/* Unselect all */}
+              <button
+                onClick={handleUnselectAll}
+                disabled={bulkLoading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
+              >
+                <X className="h-3.5 w-3.5" />
+                Unselect all {selectedIds.length}
+              </button>
+
+              {/* Delete selected */}
+              <button
+                onClick={handleBulkDeleteSelected}
+                disabled={bulkLoading}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 border border-danger/20 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-40"
+              >
+                {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                Delete {selectedIds.length} selected
+              </button>
+            </>
+          )}
+
+          {selectable && unselectedCount > 0 && (
             <button
-              onClick={() => { onBulkDelete(selectedIds); setSelectedIds([]) }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 border border-danger/20 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors"
+              onClick={handleSelectAllRecords}
+              disabled={bulkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40"
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete {selectedIds.length} selected
+              Select all {unselectedCount}
             </button>
           )}
+
+          {selectable && bulkDeleteBaseUrl && (
+            <button
+              onClick={handleDeleteAll}
+              disabled={bulkLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 border border-danger/20 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/20 transition-colors disabled:opacity-40"
+            >
+              {bulkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Delete all
+            </button>
+          )}
+
           <span className="text-xs text-muted-foreground">
-            {serverPagination ? serverPagination.pagination.total : filteredData.length} {(serverPagination ? serverPagination.pagination.total : filteredData.length) === 1 ? "row" : "rows"}
+            {totalRows} {totalRows === 1 ? "row" : "rows"}
             {search && ` · filtered from ${tableData.length}`}
           </span>
         </div>

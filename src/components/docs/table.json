@@ -67,7 +67,7 @@
       "props": [
         { "name": "key", "type": "keyof T | string", "required": true, "description": "Data property key" },
         { "name": "title", "type": "string", "required": true, "description": "Column header text" },
-        { "name": "type", "type": "'text' | 'image' | 'badge' | 'icon' | 'stack' | 'select' | 'toggle' | 'color' | 'checkbox'", "description": "Cell render type" },
+        { "name": "type", "type": "'text' | 'image' | 'badge' | 'icon' | 'stack' | 'select' | 'toggle' | 'color' | 'checkbox' | 'text-url'", "description": "Cell render type" },
         { "name": "width", "type": "number | string", "description": "Column width in px or CSS" },
         { "name": "align", "type": "'left' | 'center' | 'right'", "description": "Text alignment" },
         { "name": "sortable", "type": "boolean", "description": "Enable sorting" },
@@ -76,6 +76,9 @@
         { "name": "hidden", "type": "boolean", "description": "Hide column" },
         { "name": "tooltip", "type": "(item: T) => string", "description": "Tooltip text generator" },
         { "name": "copyable", "type": "boolean", "description": "Allow copying cell content" },
+        { "name": "redirect", "type": "string | ((item: T) => string)", "description": "For type='text-url': URL to navigate to. If omitted, uses the cell value as the URL. Supports dynamic URL via function." },
+        { "name": "openNewTab", "type": "boolean", "default": "false", "description": "For type='text-url': open link in a new tab." },
+        { "name": "underlineColor", "type": "'primary' | 'info' | 'success' | 'warning' | 'danger' | string", "description": "For type='text-url': underline color. Accepts theme tokens or any hex/rgb/rgba string." },
         { "name": "render", "type": "(item: T) => React.ReactNode", "description": "Custom cell renderer" },
         { "name": "onChange", "type": "(item: T, value: any) => void", "description": "Cell change callback" },
         { "name": "selectOptions", "type": "string[]", "description": "Options for select type" },

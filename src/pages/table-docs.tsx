@@ -962,7 +962,7 @@ hardReloadRef.current()`}</pre>
       {/* ── Server Table Column Overrides ── */}
       <Section id="servertablecolumns"><Playground
         title="Server Table Column Overrides"
-        description="Use columnOverrides in useServerTable to customize any auto-derived column. Supports all Column props: type (badge, toggle, select, checkbox, color, image, stack, icon), selectOptions, onChange, render, sortable, stackProps. The key matches the response field name exactly."
+        description="Use columnOverrides in useServerTable to customize any auto-derived column. Supports all Column props including the new text-url type with redirect, openNewTab, and underlineColor. The key matches the response field name exactly."
         code={`const { data, columns, serverPagination } = useServerTable({
   url: "/api/users",
   columnOverrides: {
@@ -991,6 +991,20 @@ hardReloadRef.current()`}</pre>
     // Render avatar as an image
     avatar: { type: "image" },
 
+    // Clickable URL — uses cell value as href, same tab
+    website: {
+      type: "text-url",
+      underlineColor: "primary",
+    },
+
+    // Clickable URL — static redirect, new tab, custom color
+    product_id: {
+      type: "text-url",
+      redirect: (item) => "https://example.com/products/" + item.product_id,
+      openNewTab: true,
+      underlineColor: "#196EBF",
+    },
+
     // Fully custom render
     score: {
       render: (item) => (
@@ -1009,21 +1023,23 @@ hardReloadRef.current()`}</pre>
       >
         {(() => {
           const [rows, setRows] = React.useState([
-            { id: "1", name: "Alice Johnson",  status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 92, avatar: "https://i.pravatar.cc/150?img=1" },
-            { id: "2", name: "Bob Martinez",   status: "Warning",  role: "Editor",  enabled: false, verified: false, score: 54, avatar: "https://i.pravatar.cc/150?img=2" },
-            { id: "3", name: "Carol White",    status: "Inactive", role: "Viewer",  enabled: false, verified: true,  score: 30, avatar: "https://i.pravatar.cc/150?img=3" },
-            { id: "4", name: "David Kim",      status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 78, avatar: "https://i.pravatar.cc/150?img=4" },
-            { id: "5", name: "Eva Chen",       status: "Pending",  role: "Editor",  enabled: true,  verified: false, score: 65, avatar: "https://i.pravatar.cc/150?img=5" },
+            { id: "1", name: "Alice Johnson",  status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 92, avatar: "https://i.pravatar.cc/150?img=1", website: "https://example.com", product_id: "1001" },
+            { id: "2", name: "Bob Martinez",   status: "Warning",  role: "Editor",  enabled: false, verified: false, score: 54, avatar: "https://i.pravatar.cc/150?img=2", website: "https://example.com", product_id: "1002" },
+            { id: "3", name: "Carol White",    status: "Inactive", role: "Viewer",  enabled: false, verified: true,  score: 30, avatar: "https://i.pravatar.cc/150?img=3", website: "https://example.com", product_id: "1003" },
+            { id: "4", name: "David Kim",      status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 78, avatar: "https://i.pravatar.cc/150?img=4", website: "https://example.com", product_id: "1004" },
+            { id: "5", name: "Eva Chen",       status: "Pending",  role: "Editor",  enabled: true,  verified: false, score: 65, avatar: "https://i.pravatar.cc/150?img=5", website: "https://example.com", product_id: "1005" },
           ])
           const patch = (id: string, key: string, value: any) =>
             setRows((prev) => prev.map((r) => r.id === id ? { ...r, [key]: value } : r))
           const cols: Column<typeof rows[0]>[] = [
-            { key: "avatar",   title: "Avatar",   type: "image" },
-            { key: "name",     title: "Name",     type: "text",     sortable: true },
-            { key: "status",   title: "Status",   type: "badge",    sortable: true },
-            { key: "role",     title: "Role",     type: "select",   selectOptions: ["Admin","Editor","Viewer"], onChange: (item, v) => patch(item.id, "role", v) },
-            { key: "enabled",  title: "Enabled",  type: "toggle",   onChange: (item, v) => patch(item.id, "enabled", v) },
-            { key: "verified", title: "Verified", type: "checkbox", onChange: (item, v) => patch(item.id, "verified", v) },
+            { key: "avatar",     title: "Avatar",     type: "image" },
+            { key: "name",       title: "Name",       type: "text",     sortable: true },
+            { key: "status",     title: "Status",     type: "badge",    sortable: true },
+            { key: "role",       title: "Role",       type: "select",   selectOptions: ["Admin","Editor","Viewer"], onChange: (item, v) => patch(item.id, "role", v) },
+            { key: "enabled",    title: "Enabled",    type: "toggle",   onChange: (item, v) => patch(item.id, "enabled", v) },
+            { key: "verified",   title: "Verified",   type: "checkbox", onChange: (item, v) => patch(item.id, "verified", v) },
+            { key: "website",    title: "Website",    type: "text-url", underlineColor: "primary" },
+            { key: "product_id", title: "Product ID", type: "text-url", redirect: (item: any) => `https://example.com/products/${item.product_id}`, openNewTab: true, underlineColor: "#196EBF" },
             { key: "score",    title: "Score",    render: (item) => (
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">

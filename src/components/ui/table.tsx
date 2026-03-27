@@ -1149,7 +1149,7 @@ function DeleteModal<T extends Record<string, any>>({
 export interface Column<T> {
   key: keyof T | string
   title: string
-  type?: "text" | "image" | "badge" | "icon" | "stack" | "select" | "toggle" | "color" | "checkbox"
+  type?: "text" | "image" | "badge" | "icon" | "stack" | "select" | "toggle" | "color" | "checkbox" | "text-url"
   stackProps?: { limit?: number; stacked?: boolean; shape?: "circle" | "square"; size?: number }
   /** Options for type="select" */
   selectOptions?: string[]
@@ -1171,6 +1171,18 @@ export interface Column<T> {
   tooltip?: (item: T) => string
   /** Allow copying cell content */
   copyable?: boolean
+  /**
+   * For type="text-url": static URL to navigate to. If omitted, uses the cell value as the URL.
+   * Supports dynamic URL via function: (item) => string
+   */
+  redirect?: string | ((item: T) => string)
+  /** For type="text-url": open link in a new tab. Default false. */
+  openNewTab?: boolean
+  /**
+   * For type="text-url": underline color.
+   * Accepts: "primary" | "info" | "success" | "warning" | "danger" | any hex | rgb | rgba string.
+   */
+  underlineColor?: "primary" | "info" | "success" | "warning" | "danger" | string
 }
 
 /**
@@ -1762,7 +1774,30 @@ export function Table<T extends Record<string, any>>({
                               checked={!!item[col.key]}
                               onChange={(e) => col.onChange?.(item, e.target.checked)}
                             />
-                          ) : (
+                          ) : col.type === "text-url" ? (() => {
+                            const href = col.redirect
+                              ? (typeof col.redirect === "function" ? col.redirect(item) : col.redirect)
+                              : String(item[col.key] ?? "")
+                            const colorMap: Record<string, string> = {
+                              primary: "var(--primary)", info: "var(--info)",
+                              success: "var(--success)", warning: "var(--warning)", danger: "var(--danger)",
+                            }
+                            const underline = col.underlineColor
+                              ? colorMap[col.underlineColor] ?? col.underlineColor
+                              : "var(--primary)"
+                            return (
+                              <a
+                                href={href}
+                                target={col.openNewTab ? "_blank" : undefined}
+                                rel={col.openNewTab ? "noopener noreferrer" : undefined}
+                                style={{ textDecorationColor: underline }}
+                                className="text-sm underline underline-offset-2 hover:opacity-75 transition-opacity break-all"
+                                onClick={col.openNewTab ? undefined : (e) => e.preventDefault()}
+                              >
+                                {item[col.key]}
+                              </a>
+                            )
+                          })() : (
                             <span className="text-foreground/90">{item[col.key]}</span>
                           )}
                         </td>

@@ -49,7 +49,9 @@ export function decryptLaravelPayload<T>(payload: string, secretKey?: string): T
 
   const key = parseLaravelKey(resolvedKey);
 
-  const expectedMac = CryptoJS.HmacSHA256(parsed.iv + parsed.value, key).toString();
+  // Laravel computes: hash_hmac('sha256', iv + value, rawKeyBytes)
+  // CryptoJS HmacSHA256 with a WordArray key uses the raw bytes correctly
+  const expectedMac = CryptoJS.HmacSHA256(parsed.iv + parsed.value, key).toString(CryptoJS.enc.Hex);
   if (expectedMac !== parsed.mac) {
     throw new Error("Invalid payload MAC (wrong key or tampered payload).");
   }

@@ -129,8 +129,9 @@ export function useServerBulletin({
         if (cancelled) return
         const payload = encrypt ? decryptLaravelPayload<ServerTableResponse<any>>(res as unknown as string, key) : res
         if (encrypt && decryptPayloadLog) console.log("[useServerBulletin] decrypted:", payload)
-        const rows: any[] = payload.data
+        const rows: any[] = Array.isArray(payload) ? payload : (payload.data ?? [])
         setItems(transform ? rows.map(transform) : rows as BulletinItem[])
+        if (!Array.isArray(payload)) {
         const rawTotal    = (payload as any).total    as number
         const rawPerPage  = (payload as any).per_page  as number
         const rawLastPage = (payload as any).last_page as number | undefined
@@ -150,6 +151,7 @@ export function useServerBulletin({
           links:    (payload as any).links ?? [],
         }
         setPagination(pg)
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -821,13 +823,13 @@ export function BulletinBoard({
   const categories = React.useMemo(() => {
     if (categoriesProp) return categoriesProp
     const set = new Set<string>()
-    items.forEach((i) => { if (i.category) set.add(i.category) })
+    ;(items ?? []).forEach((i) => { if (i.category) set.add(i.category) })
     return Array.from(set)
   }, [items, categoriesProp])
 
   // Filter + sort (pinned first)
   const filtered = React.useMemo(() => {
-    let list = items
+    let list = items ?? []
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter((i) =>
@@ -839,7 +841,7 @@ export function BulletinBoard({
     }
     if (category) list = list.filter((i) => i.category === category)
     return [...list].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
-  }, [items, search, category])
+  }, [items ?? [], search, category])
 
   const showToolbar = searchable || (filterable && categories.length > 0)
 

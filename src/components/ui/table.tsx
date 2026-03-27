@@ -1966,8 +1966,10 @@ export function Table<T extends Record<string, any>>({
       onBulkDelete?.(selectedIds)
       setSelectedIds([])
       defaultActions?.onReload?.()
+      toast({ variant: "success", title: "Deleted", description: `${selectedIds.length} record${selectedIds.length !== 1 ? "s" : ""} deleted successfully.` })
     } catch (err: any) {
-      console.error("[Table] Bulk delete selected failed:", err?.response?.data?.message ?? err.message)
+      const msg = err?.response?.data?.message ?? err.message ?? "Bulk delete failed"
+      toast({ variant: "error", title: "Delete failed", description: msg })
     } finally {
       setBulkLoading(false)
     }
@@ -1984,8 +1986,10 @@ export function Table<T extends Record<string, any>>({
       setTableData([])
       setSelectedIds([])
       defaultActions?.onReload?.()
+      toast({ variant: "success", title: "Deleted", description: "All records deleted successfully." })
     } catch (err: any) {
-      console.error("[Table] Delete all failed:", err?.response?.data?.message ?? err.message)
+      const msg = err?.response?.data?.message ?? err.message ?? "Delete all failed"
+      toast({ variant: "error", title: "Delete failed", description: msg })
     } finally {
       setBulkLoading(false)
     }

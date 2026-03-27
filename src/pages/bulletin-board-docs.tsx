@@ -15,6 +15,7 @@ const TOC = [
   { id: "priority",   label: "Priority & Pinned" },
   { id: "actions",    label: "Item Actions" },
   { id: "preview",    label: "Preview Modal" },
+  { id: "footer",     label: "Footer Actions" },
   { id: "server",     label: "useServerBulletin" },
   { id: "loading",    label: "Loading State" },
   { id: "props",      label: "Props" },
@@ -243,6 +244,52 @@ export function BulletinBoardDocs() {
         </Playground>
       </Section>
 
+      <Section id="footer">
+        <Playground
+          title="Footer Actions"
+          description="footerAction renders below the board content (above pagination). headerPreviewAction and footerPreviewAction inject elements into the preview modal header and footer respectively."
+          code={`<BulletinBoard
+  items={items}
+  preview
+  footerAction={
+    <Button size="sm" variant="outline">Load More</Button>
+  }
+  headerPreviewAction={
+    <Badge variant="info">New</Badge>
+  }
+  footerPreviewAction={
+    <Button size="sm" variant="secondary">Share</Button>
+  }
+/>
+
+{/* Or directly on BulletinPreview: */}
+<BulletinPreview
+  item={item}
+  onClose={onClose}
+  headerAction={<Badge variant="info">New</Badge>}
+  footerAction={<Button size="sm" variant="secondary">Share</Button>}
+/>`}
+        >
+          <BulletinBoard
+            items={SAMPLE.slice(0, 3)}
+            columns={3}
+            showHeader={false}
+            preview
+            footerAction={
+              <div className="flex justify-center">
+                <Button size="sm" variant="outline">Load More</Button>
+              </div>
+            }
+            headerPreviewAction={
+              <span className="text-[10px] font-semibold text-info">New</span>
+            }
+            footerPreviewAction={
+              <Button size="sm" variant="secondary">Share</Button>
+            }
+          />
+        </Playground>
+      </Section>
+
       <Section id="server">
         <Playground
           title="useServerBulletin"
@@ -310,7 +357,23 @@ export function BulletinBoardDocs() {
           { prop: "deleteIdKey",      type: "string",          default: '"id"',  description: "Item key used as the id segment in the delete URL." },
           { prop: "serverPagination", type: "BulletinServerPaginationProp | null", description: "Pass the serverPagination from useServerBulletin to enable server-driven pagination." },
           { prop: "onItemClick",      type: "(item: BulletinItem) => void", description: "Fired when a post card is clicked (ignored when preview=true)." },
+          { prop: "footerAction",          type: "ReactNode", description: "Extra React elements rendered below the board content (above pagination)." },
+          { prop: "headerPreviewAction",    type: "ReactNode", description: "Extra React elements rendered in the preview modal header's left area." },
+          { prop: "footerPreviewAction",    type: "ReactNode", description: "Extra React elements rendered in the preview modal footer's action area." },
           { prop: "className",        type: "string",          description: "Additional CSS classes on the outer wrapper." },
+        ]} />
+      </Section>
+
+      <Section id="previewprops">
+        <PropsTable rows={[
+          { prop: "item",          type: "BulletinItem", required: true, description: "The bulletin item to display." },
+          { prop: "onClose",       type: "() => void",   required: true, description: "Called when the modal is dismissed." },
+          { prop: "onEdit",        type: "(item: BulletinItem) => void", description: "Show an Edit button; called when clicked." },
+          { prop: "onDelete",      type: "(item: BulletinItem) => void", description: "Show a Delete button; called when clicked." },
+          { prop: "onView",        type: "(item: BulletinItem) => void", description: "Show a View button; called when clicked." },
+          { prop: "customActions", type: "BulletinAction[]", description: "Extra icon buttons rendered in the modal header's right action row." },
+          { prop: "headerAction",  type: "ReactNode", description: "Extra React elements rendered in the modal header's left badge area." },
+          { prop: "footerAction",  type: "ReactNode", description: "Extra React elements rendered in the modal footer's action area, before Edit/Delete." },
         ]} />
       </Section>
 

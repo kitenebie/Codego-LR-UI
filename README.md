@@ -739,6 +739,53 @@ function AnnouncementsPage() {
 
 ---
 
+## Laravel Response Decryption
+
+Use `decryptResponse` to decrypt Laravel-encrypted API responses (AES-256-CBC).
+
+### Setup
+
+Add your Laravel `APP_KEY` to `.env`:
+
+```env
+VITE_LARAVEL_KEY=base64:your_laravel_app_key_here
+```
+
+### Usage
+
+```tsx
+import { api, decryptResponse } from "@juv/codego-react-ui"
+
+type Certificate = { id: number; name: string }
+
+const fetchCertificates = async () => {
+  const data = await api.get<string>('/certificate')
+  const decoded = decryptResponse<Certificate[]>(data)
+  console.log(decoded)
+}
+```
+
+> `api.get` should be typed as `string` since the raw response is an encrypted payload. `decryptResponse` reads `VITE_LARAVEL_KEY` automatically.
+
+You can also pass the key explicitly:
+
+```tsx
+const decoded = decryptResponse<Certificate[]>(data, "base64:your_key_here")
+```
+
+### API
+
+| Export | Description |
+|---|---|
+| `decryptResponse(response, key?)` | Decrypts a Laravel-encrypted string or `{ data: string }` object. |
+| `decryptLaravelPayload(payload, key?)` | Low-level decryption of a raw encrypted payload string. |
+| `getLaravelSecretKey()` | Reads the key from `VITE_LARAVEL_KEY`, `REACT_APP_LARAVEL_KEY`, or `window.__LARAVEL_KEY__`. |
+| `parseLaravelKey(secretKey)` | Parses a `base64:...` or raw key string into a `CryptoJS.WordArray`. |
+| `parseLaravelEncryptedPayload(payload)` | Parses a base64-encoded Laravel encrypted payload into `{ iv, value, mac }`. |
+| `LaravelEncryptedPayload` | Type for the parsed payload object. |
+
+---
+
 ## Run Locally
 
 **Prerequisites:** Node.js

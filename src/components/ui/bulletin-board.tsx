@@ -193,9 +193,13 @@ export interface BulletinPreviewProps {
   onView?: (item: BulletinItem) => void
   /** Custom actions to add to the preview header */
   customActions?: BulletinAction[]
+  /** Extra React elements rendered in the preview modal header's left area */
+  headerAction?: React.ReactNode
+  /** Extra React elements rendered in the preview modal footer's action area */
+  footerAction?: React.ReactNode
 }
 
-export function BulletinPreview({ item, onClose, onEdit, onDelete, onView, customActions }: BulletinPreviewProps) {
+export function BulletinPreview({ item, onClose, onEdit, onDelete, onView, customActions, headerAction, footerAction }: BulletinPreviewProps) {
   const priority = item.priority ? PRIORITY_CONFIG[item.priority] : null
   
   return createPortal(
@@ -217,6 +221,7 @@ export function BulletinPreview({ item, onClose, onEdit, onDelete, onView, custo
               <Badge variant={priority.badge} size="sm" icon={priority.icon ?? undefined}>{priority.label}</Badge>
             )}
             {item.category && <Badge variant="outline" size="sm">{item.category}</Badge>}
+            {headerAction}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {onEdit && (
@@ -328,6 +333,7 @@ export function BulletinPreview({ item, onClose, onEdit, onDelete, onView, custo
             )}
           </div>
           <div className="flex items-center gap-2">
+            {footerAction}
             {onEdit && (
               <button
                 type="button"
@@ -608,6 +614,12 @@ export interface BulletinBoardProps {
   // ── Actions ───────────────────────────────────────────────────────────────────
   /** Fired when a post card is clicked (ignored when preview=true). */
   onItemClick?: (item: BulletinItem) => void
+  /** Extra React elements rendered below the board content (above pagination). */
+  footerAction?: React.ReactNode
+  /** Extra React elements rendered in the preview modal header's left area. */
+  headerPreviewAction?: React.ReactNode
+  /** Extra React elements rendered in the preview modal footer's action area. */
+  footerPreviewAction?: React.ReactNode
   /** Additional CSS classes on the outer wrapper. */
   className?: string
 }
@@ -813,6 +825,9 @@ export function BulletinBoard({
   deleteBaseUrl,
   deleteIdKey = "id",
   serverPagination,
+  footerAction,
+  headerPreviewAction,
+  footerPreviewAction,
   className,
 }: BulletinBoardProps) {
   const [previewItem, setPreviewItem]   = React.useState<BulletinItem | null>(null)
@@ -942,6 +957,9 @@ export function BulletinBoard({
         </div>
       )}
 
+      {/* Footer action */}
+      {footerAction && <div>{footerAction}</div>}
+
       {/* Server-side pagination */}
       {serverPagination && (() => {
         const { pagination, currentPage: cp, goToPage } = serverPagination
@@ -1017,6 +1035,8 @@ export function BulletinBoard({
               ? (item) => { onDelete(item) }
               : undefined
           }
+          footerAction={footerPreviewAction}
+          headerAction={headerPreviewAction}
         />
       )}
 

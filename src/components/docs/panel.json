@@ -1,0 +1,346 @@
+{
+  "components": [
+    {
+      "name": "Panel",
+      "import": "import { Panel, PanelSidebarItem, PanelSidebarGroup } from '@juv/codego-react-ui'",
+      "description": "A fully-featured layout component with collapsible sidebar, topbar, and responsive mobile support. Supports controlled state, loading/error states, sidebar groups, theme customization, AI-friendly actions, keyboard navigation, animations, and mobile responsiveness.",
+      "props": [
+        {
+          "name": "sidebar",
+          "type": "React.ReactNode",
+          "description": "Sidebar content (typically PanelSidebarItem and PanelSidebarGroup components)"
+        },
+        {
+          "name": "sidebarBrand",
+          "type": "PanelBrand",
+          "description": "Structured brand header with image, icon, title, and trailing content. Shows full content when expanded, icon-only when collapsed"
+        },
+        {
+          "name": "sidebarProfile",
+          "type": "PanelProfile",
+          "description": "Structured profile footer with image, icon, and content. Shows full content when expanded, icon-only when collapsed"
+        },
+        {
+          "name": "sidebarHeader",
+          "type": "React.ReactNode",
+          "description": "Deprecated: use sidebarBrand instead"
+        },
+        {
+          "name": "sidebarFooter",
+          "type": "React.ReactNode",
+          "description": "Deprecated: use sidebarProfile instead"
+        },
+        {
+          "name": "sidebarWidth",
+          "type": "string",
+          "default": "w-56",
+          "description": "Tailwind width class for expanded sidebar"
+        },
+        {
+          "name": "topbar",
+          "type": "React.ReactNode",
+          "description": "Content rendered on the left side of the topbar"
+        },
+        {
+          "name": "topbarTrailing",
+          "type": "React.ReactNode",
+          "description": "Content rendered on the right side of the topbar"
+        },
+        {
+          "name": "defaultCollapsed",
+          "type": "boolean",
+          "default": "false",
+          "description": "Initial collapsed state (used when collapsed prop is not controlled)"
+        },
+        {
+          "name": "collapsed",
+          "type": "boolean",
+          "description": "Controlled collapsed state. When provided, overrides internal state"
+        },
+        {
+          "name": "onCollapsedChange",
+          "type": "(collapsed: boolean) => void",
+          "description": "Callback fired when collapse state changes"
+        },
+        {
+          "name": "collapsible",
+          "type": "boolean",
+          "default": "false",
+          "description": "Enable collapse/expand button in topbar"
+        },
+        {
+          "name": "showThemeToggle",
+          "type": "boolean",
+          "default": "false",
+          "description": "Show light/dark theme toggle button in topbar"
+        },
+        {
+          "name": "defaultPage",
+          "type": "string",
+          "description": "Initial page identifier (used when currentPage prop is not controlled)"
+        },
+        {
+          "name": "currentPage",
+          "type": "string",
+          "description": "Controlled current page. When provided, overrides internal state"
+        },
+        {
+          "name": "onPageChange",
+          "type": "(page: string) => void",
+          "description": "Callback fired when page changes"
+        },
+        {
+          "name": "height",
+          "type": "string",
+          "default": "h-[520px]",
+          "description": "Tailwind height class for the panel container"
+        },
+        {
+          "name": "children",
+          "type": "React.ReactNode",
+          "description": "Main content area"
+        },
+        {
+          "name": "className",
+          "type": "string",
+          "description": "Additional CSS classes for the panel container"
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": "false",
+          "description": "Show loading spinner when true"
+        },
+        {
+          "name": "emptyState",
+          "type": "React.ReactNode",
+          "description": "Content to show when children is empty and not loading"
+        },
+        {
+          "name": "error",
+          "type": "string | null",
+          "description": "Error message to display at the top of content area"
+        },
+        {
+          "name": "showGroupDividers",
+          "type": "boolean",
+          "default": "false",
+          "description": "Show dividers between sidebar groups when collapsed"
+        },
+        {
+          "name": "expandedGroups",
+          "type": "string[]",
+          "description": "Controlled array of expanded group titles. When provided, overrides internal state"
+        },
+        {
+          "name": "onGroupToggle",
+          "type": "(groupTitle: string, expanded: boolean) => void",
+          "description": "Callback fired when a sidebar group is toggled"
+        },
+        {
+          "name": "theme",
+          "type": "'light' | 'dark' | 'auto'",
+          "description": "Theme preference (auto uses system preference)"
+        },
+        {
+          "name": "collapseIcon",
+          "type": "React.ReactNode",
+          "description": "Custom icon for collapse button (replaces default PanelLeftClose)"
+        },
+        {
+          "name": "expandIcon",
+          "type": "React.ReactNode",
+          "description": "Custom icon for expand button (replaces default PanelLeftOpen)"
+        },
+        {
+          "name": "meta",
+          "type": "Record<string, any>",
+          "description": "Metadata object for AI agents and external integrations"
+        },
+        {
+          "name": "actions",
+          "type": "Record<string, () => void>",
+          "description": "Named actions that can be triggered programmatically (e.g., { 'collapse-sidebar': () => {...}, 'toggle-theme': () => {...} })"
+        },
+        {
+          "name": "keyboardNavigation",
+          "type": "boolean",
+          "default": "false",
+          "description": "Enable keyboard shortcuts (Escape to collapse, Enter to expand)"
+        },
+        {
+          "name": "draggable",
+          "type": "boolean",
+          "default": "false",
+          "description": "Enable drag-to-reorder for sidebar items"
+        },
+        {
+          "name": "onSidebarReorder",
+          "type": "(items: React.ReactNode[]) => void",
+          "description": "Callback fired when sidebar items are reordered via drag"
+        },
+        {
+          "name": "animationDuration",
+          "type": "number",
+          "default": "200",
+          "description": "Duration in milliseconds for collapse/expand animations"
+        },
+        {
+          "name": "animationEasing",
+          "type": "string",
+          "default": "ease-in-out",
+          "description": "CSS easing function for animations (e.g., 'ease-in-out', 'cubic-bezier(...)')"
+        },
+        {
+          "name": "sidebarTooltip",
+          "type": "(item: React.ReactNode) => React.ReactNode",
+          "description": "Custom tooltip renderer for sidebar items when collapsed"
+        },
+        {
+          "name": "mobileBreakpoint",
+          "type": "number",
+          "default": "768",
+          "description": "Width in pixels below which sidebar auto-collapses on mobile"
+        },
+        {
+          "name": "mobileCollapsed",
+          "type": "boolean",
+          "description": "Controlled mobile collapsed state. When provided, overrides internal state"
+        },
+        {
+          "name": "onMobileCollapseChange",
+          "type": "(collapsed: boolean) => void",
+          "description": "Callback fired when mobile collapse state changes"
+        }
+      ],
+      "example": "<Panel\n  sidebar={\n    <>\n      <PanelSidebarGroup title=\"Navigation\">\n        <PanelSidebarItem icon={Home} label=\"Home\" active />\n        <PanelSidebarItem icon={Settings} label=\"Settings\" />\n      </PanelSidebarGroup>\n    </>\n  }\n  sidebarBrand={{\n    image: '/logo.png',\n    title: 'My App',\n  }}\n  sidebarProfile={{\n    image: '/avatar.jpg',\n    content: <div>Profile</div>,\n  }}\n  topbar={<h1>Dashboard</h1>}\n  topbarTrailing={<PanelThemeToggle />}\n  collapsible\n  showThemeToggle\n  loading={isLoading}\n  error={error}\n  emptyState={<p>No data</p>}\n  keyboardNavigation\n  animationDuration={300}\n>\n  <div>Main content</div>\n</Panel>"
+    },
+    {
+      "name": "PanelSidebarItem",
+      "import": "import { PanelSidebarItem } from '@juv/codego-react-ui'",
+      "description": "A clickable sidebar item that shows icon + label when expanded, icon-only with tooltip when collapsed.",
+      "props": [
+        {
+          "name": "icon",
+          "type": "React.ElementType",
+          "description": "Lucide icon component (e.g., Home, Settings)"
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": true,
+          "description": "Text label for the item"
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "description": "Highlight item as active"
+        },
+        {
+          "name": "onClick",
+          "type": "() => void",
+          "description": "Callback when item is clicked"
+        }
+      ],
+      "example": "<PanelSidebarItem\n  icon={Home}\n  label=\"Home\"\n  active={currentPage === 'home'}\n  onClick={() => onPageChange('home')}\n/>"
+    },
+    {
+      "name": "PanelSidebarGroup",
+      "import": "import { PanelSidebarGroup } from '@juv/codego-react-ui'",
+      "description": "A collapsible group container for sidebar items. Shows title when expanded, divider when collapsed. Supports controlled expansion state.",
+      "props": [
+        {
+          "name": "title",
+          "type": "string",
+          "description": "Group title (clickable to toggle expansion)"
+        },
+        {
+          "name": "children",
+          "type": "React.ReactNode",
+          "required": true,
+          "description": "Group content (typically PanelSidebarItem components)"
+        }
+      ],
+      "example": "<PanelSidebarGroup title=\"Navigation\">\n  <PanelSidebarItem icon={Home} label=\"Home\" />\n  <PanelSidebarItem icon={Users} label=\"Users\" />\n</PanelSidebarGroup>"
+    },
+    {
+      "name": "PanelBrand",
+      "import": "import type { PanelBrand } from '@juv/codego-react-ui'",
+      "description": "Type definition for sidebar brand header configuration",
+      "props": [
+        {
+          "name": "image",
+          "type": "string",
+          "description": "Logo image URL"
+        },
+        {
+          "name": "icon",
+          "type": "React.ReactNode",
+          "description": "Fallback icon when no image"
+        },
+        {
+          "name": "title",
+          "type": "React.ReactNode",
+          "description": "Brand title (shown when expanded)"
+        },
+        {
+          "name": "trailing",
+          "type": "React.ReactNode",
+          "description": "Extra content rendered to the right of title"
+        }
+      ]
+    },
+    {
+      "name": "PanelProfile",
+      "import": "import type { PanelProfile } from '@juv/codego-react-ui'",
+      "description": "Type definition for sidebar profile footer configuration",
+      "props": [
+        {
+          "name": "image",
+          "type": "string",
+          "description": "Profile avatar image URL"
+        },
+        {
+          "name": "icon",
+          "type": "React.ReactNode",
+          "description": "Fallback icon when no image"
+        },
+        {
+          "name": "content",
+          "type": "React.ReactNode",
+          "description": "Full profile content (shown when expanded)"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "title": "Basic Panel with Collapsible Sidebar",
+      "code": "import { Panel, PanelSidebarItem, PanelSidebarGroup } from '@juv/codego-react-ui'\nimport { Home, Settings, Users } from 'lucide-react'\n\nexport function BasicPanel() {\n  return (\n    <Panel\n      sidebar={\n        <>\n          <PanelSidebarGroup title=\"Main\">\n            <PanelSidebarItem icon={Home} label=\"Home\" active />\n            <PanelSidebarItem icon={Users} label=\"Users\" />\n          </PanelSidebarGroup>\n          <PanelSidebarGroup title=\"Settings\">\n            <PanelSidebarItem icon={Settings} label=\"Settings\" />\n          </PanelSidebarGroup>\n        </>\n      }\n      sidebarBrand={{ title: 'My App' }}\n      collapsible\n      showThemeToggle\n    >\n      <h1>Welcome</h1>\n    </Panel>\n  )\n}"
+    },
+    {
+      "title": "Controlled Panel with Page Navigation",
+      "code": "import { Panel, PanelSidebarItem } from '@juv/codego-react-ui'\nimport { Home, Settings } from 'lucide-react'\nimport { useState } from 'react'\n\nexport function ControlledPanel() {\n  const [currentPage, setCurrentPage] = useState('home')\n  const [collapsed, setCollapsed] = useState(false)\n\n  return (\n    <Panel\n      sidebar={\n        <>\n          <PanelSidebarItem\n            icon={Home}\n            label=\"Home\"\n            active={currentPage === 'home'}\n            onClick={() => setCurrentPage('home')}\n          />\n          <PanelSidebarItem\n            icon={Settings}\n            label=\"Settings\"\n            active={currentPage === 'settings'}\n            onClick={() => setCurrentPage('settings')}\n          />\n        </>\n      }\n      collapsed={collapsed}\n      onCollapsedChange={setCollapsed}\n      currentPage={currentPage}\n      onPageChange={setCurrentPage}\n      collapsible\n    >\n      {currentPage === 'home' && <div>Home Page</div>}\n      {currentPage === 'settings' && <div>Settings Page</div>}\n    </Panel>\n  )\n}"
+    },
+    {
+      "title": "Panel with Loading and Error States",
+      "code": "import { Panel, PanelSidebarItem } from '@juv/codego-react-ui'\nimport { useState, useEffect } from 'react'\n\nexport function PanelWithStates() {\n  const [loading, setLoading] = useState(true)\n  const [error, setError] = useState<string | null>(null)\n  const [data, setData] = useState(null)\n\n  useEffect(() => {\n    fetchData()\n  }, [])\n\n  const fetchData = async () => {\n    try {\n      setLoading(true)\n      const response = await fetch('/api/data')\n      if (!response.ok) throw new Error('Failed to fetch')\n      setData(await response.json())\n      setError(null)\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Unknown error')\n    } finally {\n      setLoading(false)\n    }\n  }\n\n  return (\n    <Panel\n      sidebar={<PanelSidebarItem label=\"Data\" />}\n      loading={loading}\n      error={error}\n      emptyState={<p>No data available</p>}\n    >\n      {data && <pre>{JSON.stringify(data, null, 2)}</pre>}\n    </Panel>\n  )\n}"
+    },
+    {
+      "title": "Panel with Controlled Sidebar Groups",
+      "code": "import { Panel, PanelSidebarItem, PanelSidebarGroup } from '@juv/codego-react-ui'\nimport { useState } from 'react'\n\nexport function PanelWithGroups() {\n  const [expandedGroups, setExpandedGroups] = useState(['Main'])\n\n  const handleGroupToggle = (title: string, expanded: boolean) => {\n    setExpandedGroups((prev) =>\n      expanded ? [...prev, title] : prev.filter((g) => g !== title)\n    )\n  }\n\n  return (\n    <Panel\n      sidebar={\n        <>\n          <PanelSidebarGroup title=\"Main\">\n            <PanelSidebarItem label=\"Home\" />\n            <PanelSidebarItem label=\"Dashboard\" />\n          </PanelSidebarGroup>\n          <PanelSidebarGroup title=\"Admin\">\n            <PanelSidebarItem label=\"Users\" />\n            <PanelSidebarItem label=\"Settings\" />\n          </PanelSidebarGroup>\n        </>\n      }\n      expandedGroups={expandedGroups}\n      onGroupToggle={handleGroupToggle}\n      showGroupDividers\n    >\n      <div>Content</div>\n    </Panel>\n  )\n}"
+    },
+    {
+      "title": "Panel with AI-Friendly Actions",
+      "code": "import { Panel, PanelSidebarItem } from '@juv/codego-react-ui'\nimport { useRef } from 'react'\n\nexport function PanelWithActions() {\n  const panelRef = useRef<HTMLDivElement>(null)\n  const [collapsed, setCollapsed] = useState(false)\n  const [theme, setTheme] = useState('light')\n\n  const actions = {\n    'collapse-sidebar': () => setCollapsed(true),\n    'expand-sidebar': () => setCollapsed(false),\n    'toggle-sidebar': () => setCollapsed((c) => !c),\n    'toggle-theme': () => setTheme((t) => t === 'light' ? 'dark' : 'light'),\n    'navigate-home': () => console.log('Navigate to home'),\n  }\n\n  return (\n    <Panel\n      ref={panelRef}\n      sidebar={<PanelSidebarItem label=\"Home\" onClick={actions['navigate-home']} />}\n      collapsed={collapsed}\n      onCollapsedChange={setCollapsed}\n      actions={actions}\n      meta={{ version: '1.0.0', features: ['ai-actions', 'keyboard-nav'] }}\n      keyboardNavigation\n      collapsible\n    >\n      <div>AI-friendly panel with programmatic actions</div>\n    </Panel>\n  )\n}"
+    },
+    {
+      "title": "Panel with Custom Animations",
+      "code": "import { Panel, PanelSidebarItem } from '@juv/codego-react-ui'\n\nexport function PanelWithAnimations() {\n  return (\n    <Panel\n      sidebar={<PanelSidebarItem label=\"Home\" />}\n      collapsible\n      animationDuration={500}\n      animationEasing=\"cubic-bezier(0.4, 0, 0.2, 1)\"\n      collapseIcon={<ChevronLeft className=\"h-5 w-5\" />}\n      expandIcon={<ChevronRight className=\"h-5 w-5\" />}\n    >\n      <div>Smooth animations with custom easing</div>\n    </Panel>\n  )\n}"
+    },
+    {
+      "title": "Responsive Mobile Panel",
+      "code": "import { Panel, PanelSidebarItem } from '@juv/codego-react-ui'\nimport { useState } from 'react'\n\nexport function ResponsivePanel() {\n  const [mobileCollapsed, setMobileCollapsed] = useState(true)\n\n  return (\n    <Panel\n      sidebar={<PanelSidebarItem label=\"Home\" />}\n      mobileBreakpoint={768}\n      mobileCollapsed={mobileCollapsed}\n      onMobileCollapseChange={setMobileCollapsed}\n      collapsible\n      height=\"h-screen\"\n    >\n      <div>Responsive panel that collapses on mobile</div>\n    </Panel>\n  )\n}"
+    }
+  ]
+}

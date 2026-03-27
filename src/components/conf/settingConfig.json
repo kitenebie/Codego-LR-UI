@@ -1,0 +1,449 @@
+{
+  "defaults": {
+    "theme": "light",
+    "fontSize": "16px",
+    "fontFamily": "\"Space Grotesk\", \"Inter\", sans-serif",
+    "colors": {
+      "primary": "#5CF6E2",
+      "primaryHover": "#73F3E2",
+      "secondary": "#171717",
+      "secondaryHover": "#262626",
+      "info": "#F59E0B",
+      "infoHover": "#D97706",
+      "warning": "#f59e0b",
+      "warningHover": "#d97706",
+      "danger": "#ef4444",
+      "dangerHover": "#dc2626",
+      "accent": "#F59E0B",
+      "accentHover": "#D97706"
+    }
+  },
+  "themeOptions": [
+    { "light": "Light" },
+    { "dark": "Dark" },
+    { "system": "System" }
+  ],
+  "fontSizes": [
+    { "14px": "Small (14px)" },
+    { "15px": "Small (15px)" },
+    { "16px": "Medium (16px)" },
+    { "17px": "Medium (17px)" },
+    { "18px": "Large (18px)" },
+    { "19px": "Large (19px)" },
+    { "20px": "Extra Large (20px)" },
+    { "21px": "Extra Large (21px)" },
+    { "22px": "Extra Large (22px)" },
+    { "24px": "2X Extra Large (24px)" }
+  ],
+  "fontFamilies": [
+    { "\"Space Grotesk\", \"Inter\", sans-serif": "Space Grotesk" },
+    { "\"Inter\", sans-serif": "Inter" },
+    { "\"JetBrains Mono\", monospace": "JetBrains Mono" },
+    { "system-ui, sans-serif": "System UI" }
+  ],
+  "colorPairs": [
+    { "base": "primary", "hover": "primaryHover", "label": "Primary" },
+    { "base": "secondary", "hover": "secondaryHover", "label": "Secondary" },
+    { "base": "info", "hover": "infoHover", "label": "Info" },
+    { "base": "warning", "hover": "warningHover", "label": "Warning" },
+    { "base": "danger", "hover": "dangerHover", "label": "Danger" },
+    { "base": "accent", "hover": "accentHover", "label": "accent"}
+  ],
+  "colorPalette": [
+    {
+      "base": "#6366F1",
+      "hover": "#4F46E5",
+      "info": "#F59E0B",
+      "infoHover": "#D97706",
+      "accent": "#F59E0B",
+      "accentHover": "#D97706"
+    },
+    {
+      "base": "#818CF8",
+      "hover": "#6366F1",
+      "info": "#FBBF24",
+      "infoHover": "#F59E0B",
+      "accent": "#FBBF24",
+      "accentHover": "#F59E0B"
+    },
+    {
+      "base": "#4F46E5",
+      "hover": "#4338CA",
+      "info": "#F59E0B",
+      "infoHover": "#D97706",
+      "accent": "#F59E0B",
+      "accentHover": "#D97706"
+    },
+    {
+      "base": "#3730A3",
+      "hover": "#312E81",
+      "info": "#D97706",
+      "infoHover": "#B45309",
+      "accent": "#D97706",
+      "accentHover": "#B45309"
+    },
+
+    {
+      "base": "#7C3AED",
+      "hover": "#6D28D9",
+      "info": "#F97316",
+      "infoHover": "#EA580C",
+      "accent": "#F97316",
+      "accentHover": "#EA580C"
+    },
+    {
+      "base": "#A78BFA",
+      "hover": "#8B5CF6",
+      "info": "#FB923C",
+      "infoHover": "#F97316",
+      "accent": "#FB923C",
+      "accentHover": "#F97316"
+    },
+    {
+      "base": "#8B5CF6",
+      "hover": "#7C3AED",
+      "info": "#F97316",
+      "infoHover": "#EA580C",
+      "accent": "#F97316",
+      "accentHover": "#EA580C"
+    },
+    {
+      "base": "#6D28D9",
+      "hover": "#5B21B6",
+      "info": "#EA580C",
+      "infoHover": "#C2410C",
+      "accent": "#EA580C",
+      "accentHover": "#C2410C"
+    },
+
+    {
+      "base": "#0EA5E9",
+      "hover": "#0284C7",
+      "info": "#F97316",
+      "infoHover": "#EA580C",
+      "accent": "#F97316",
+      "accentHover": "#EA580C"
+    },
+    {
+      "base": "#38BDF8",
+      "hover": "#0EA5E9",
+      "info": "#FB923C",
+      "infoHover": "#F97316",
+      "accent": "#FB923C",
+      "accentHover": "#F97316"
+    },
+    {
+      "base": "#3B82F6",
+      "hover": "#2563EB",
+      "info": "#F59E0B",
+      "infoHover": "#D97706",
+      "accent": "#F59E0B",
+      "accentHover": "#D97706"
+    },
+    {
+      "base": "#1D4ED8",
+      "hover": "#1E40AF",
+      "info": "#D97706",
+      "infoHover": "#B45309",
+      "accent": "#D97706",
+      "accentHover": "#B45309"
+    },
+
+    {
+      "base": "#06B6D4",
+      "hover": "#0891B2",
+      "info": "#A855F7",
+      "infoHover": "#9333EA",
+      "accent": "#A855F7",
+      "accentHover": "#9333EA"
+    },
+    {
+      "base": "#22D3EE",
+      "hover": "#06B6D4",
+      "info": "#C084FC",
+      "infoHover": "#A855F7",
+      "accent": "#C084FC",
+      "accentHover": "#A855F7"
+    },
+    {
+      "base": "#14B8A6",
+      "hover": "#0F766E",
+      "info": "#8B5CF6",
+      "infoHover": "#7C3AED",
+      "accent": "#8B5CF6",
+      "accentHover": "#7C3AED"
+    },
+    {
+      "base": "#0D9488",
+      "hover": "#0F766E",
+      "info": "#7C3AED",
+      "infoHover": "#6D28D9",
+      "accent": "#7C3AED",
+      "accentHover": "#6D28D9"
+    },
+
+    {
+      "base": "#10B981",
+      "hover": "#059669",
+      "info": "#8B5CF6",
+      "infoHover": "#7C3AED",
+      "accent": "#8B5CF6",
+      "accentHover": "#7C3AED"
+    },
+    {
+      "base": "#34D399",
+      "hover": "#10B981",
+      "info": "#A855F7",
+      "infoHover": "#9333EA",
+      "accent": "#A855F7",
+      "accentHover": "#9333EA"
+    },
+    {
+      "base": "#22C55E",
+      "hover": "#16A34A",
+      "info": "#7C3AED",
+      "infoHover": "#6D28D9",
+      "accent": "#7C3AED",
+      "accentHover": "#6D28D9"
+    },
+    {
+      "base": "#16A34A",
+      "hover": "#15803D",
+      "info": "#6D28D9",
+      "infoHover": "#5B21B6",
+      "accent": "#6D28D9",
+      "accentHover": "#5B21B6"
+    },
+
+    {
+      "base": "#84CC16",
+      "hover": "#65A30D",
+      "info": "#6366F1",
+      "infoHover": "#4F46E5",
+      "accent": "#6366F1",
+      "accentHover": "#4F46E5"
+    },
+    {
+      "base": "#A3E635",
+      "hover": "#84CC16",
+      "info": "#818CF8",
+      "infoHover": "#6366F1",
+      "accent": "#818CF8",
+      "accentHover": "#6366F1"
+    },
+    {
+      "base": "#65A30D",
+      "hover": "#4D7C0F",
+      "info": "#4F46E5",
+      "infoHover": "#4338CA",
+      "accent": "#4F46E5",
+      "accentHover": "#4338CA"
+    },
+    {
+      "base": "#4D7C0F",
+      "hover": "#3F6212",
+      "info": "#3730A3",
+      "infoHover": "#312E81",
+      "accent": "#3730A3",
+      "accentHover": "#312E81"
+    },
+
+    {
+      "base": "#EAB308",
+      "hover": "#CA8A04",
+      "info": "#3B82F6",
+      "infoHover": "#2563EB",
+      "accent": "#3B82F6",
+      "accentHover": "#2563EB"
+    },
+    {
+      "base": "#FACC15",
+      "hover": "#EAB308",
+      "info": "#60A5FA",
+      "infoHover": "#3B82F6",
+      "accent": "#60A5FA",
+      "accentHover": "#3B82F6"
+    },
+    {
+      "base": "#F59E0B",
+      "hover": "#D97706",
+      "info": "#2563EB",
+      "infoHover": "#1D4ED8",
+      "accent": "#2563EB",
+      "accentHover": "#1D4ED8"
+    },
+    {
+      "base": "#D97706",
+      "hover": "#B45309",
+      "info": "#1D4ED8",
+      "infoHover": "#1E40AF",
+      "accent": "#1D4ED8",
+      "accentHover": "#1E40AF"
+    },
+
+    {
+      "base": "#F97316",
+      "hover": "#EA580C",
+      "info": "#0EA5E9",
+      "infoHover": "#0284C7",
+      "accent": "#0EA5E9",
+      "accentHover": "#0284C7"
+    },
+    {
+      "base": "#FB923C",
+      "hover": "#F97316",
+      "info": "#38BDF8",
+      "infoHover": "#0EA5E9",
+      "accent": "#38BDF8",
+      "accentHover": "#0EA5E9"
+    },
+    {
+      "base": "#EA580C",
+      "hover": "#C2410C",
+      "info": "#0284C7",
+      "infoHover": "#0369A1",
+      "accent": "#0284C7",
+      "accentHover": "#0369A1"
+    },
+    {
+      "base": "#C2410C",
+      "hover": "#9A3412",
+      "info": "#0369A1",
+      "infoHover": "#075985",
+      "accent": "#0369A1",
+      "accentHover": "#075985"
+    },
+
+    {
+      "base": "#EF4444",
+      "hover": "#DC2626",
+      "info": "#0EA5E9",
+      "infoHover": "#0284C7",
+      "accent": "#0EA5E9",
+      "accentHover": "#0284C7"
+    },
+    {
+      "base": "#F87171",
+      "hover": "#EF4444",
+      "info": "#38BDF8",
+      "infoHover": "#0EA5E9",
+      "accent": "#38BDF8",
+      "accentHover": "#0EA5E9"
+    },
+    {
+      "base": "#DC2626",
+      "hover": "#B91C1C",
+      "info": "#0284C7",
+      "infoHover": "#0369A1",
+      "accent": "#0284C7",
+      "accentHover": "#0369A1"
+    },
+    {
+      "base": "#B91C1C",
+      "hover": "#991B1B",
+      "info": "#0369A1",
+      "infoHover": "#075985",
+      "accent": "#0369A1",
+      "accentHover": "#075985"
+    },
+
+    {
+      "base": "#F43F5E",
+      "hover": "#E11D48",
+      "info": "#0EA5E9",
+      "infoHover": "#0284C7",
+      "accent": "#0EA5E9",
+      "accentHover": "#0284C7"
+    },
+    {
+      "base": "#FB7185",
+      "hover": "#F43F5E",
+      "info": "#38BDF8",
+      "infoHover": "#0EA5E9",
+      "accent": "#38BDF8",
+      "accentHover": "#0EA5E9"
+    },
+    {
+      "base": "#E11D48",
+      "hover": "#BE123C",
+      "info": "#0284C7",
+      "infoHover": "#0369A1",
+      "accent": "#0284C7",
+      "accentHover": "#0369A1"
+    },
+    {
+      "base": "#BE123C",
+      "hover": "#9F1239",
+      "info": "#0369A1",
+      "infoHover": "#075985",
+      "accent": "#0369A1",
+      "accentHover": "#075985"
+    },
+
+    {
+      "base": "#EC4899",
+      "hover": "#DB2777",
+      "info": "#06B6D4",
+      "infoHover": "#0891B2",
+      "accent": "#06B6D4",
+      "accentHover": "#0891B2"
+    },
+    {
+      "base": "#F472B6",
+      "hover": "#EC4899",
+      "info": "#22D3EE",
+      "infoHover": "#06B6D4",
+      "accent": "#22D3EE",
+      "accentHover": "#06B6D4"
+    },
+    {
+      "base": "#DB2777",
+      "hover": "#BE185D",
+      "info": "#0891B2",
+      "infoHover": "#0E7490",
+      "accent": "#0891B2",
+      "accentHover": "#0E7490"
+    },
+    {
+      "base": "#BE185D",
+      "hover": "#9D174D",
+      "info": "#0E7490",
+      "infoHover": "#155E75",
+      "accent": "#0E7490",
+      "accentHover": "#155E75"
+    },
+
+    {
+      "base": "#D946EF",
+      "hover": "#C026D3",
+      "info": "#F59E0B",
+      "infoHover": "#D97706",
+      "accent": "#F59E0B",
+      "accentHover": "#D97706"
+    },
+    {
+      "base": "#E879F9",
+      "hover": "#D946EF",
+      "info": "#FBBF24",
+      "infoHover": "#F59E0B",
+      "accent": "#FBBF24",
+      "accentHover": "#F59E0B"
+    },
+    {
+      "base": "#C026D3",
+      "hover": "#A21CAF",
+      "info": "#D97706",
+      "infoHover": "#B45309",
+      "accent": "#D97706",
+      "accentHover": "#B45309"
+    },
+    {
+      "base": "#A21CAF",
+      "hover": "#86198F",
+      "info": "#B45309",
+      "infoHover": "#92400E",
+      "accent": "#B45309",
+      "accentHover": "#92400E"
+    }
+  ]
+}

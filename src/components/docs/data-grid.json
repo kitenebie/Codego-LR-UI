@@ -1,0 +1,208 @@
+{
+  "components": [
+    {
+      "name": "DataGrid",
+      "import": "import { DataGrid } from 'my-component-lib'",
+      "description": "A powerful data grid component with sorting, filtering, pagination, row selection, column visibility toggling, and built-in CRUD actions (View/Edit/Delete). Supports both client-side and server-side pagination.",
+      "props": [
+        {
+          "name": "columns",
+          "type": "DataGridColumn<T>[]",
+          "required": true,
+          "description": "Array of column definitions defining how each column renders"
+        },
+        {
+          "name": "data",
+          "type": "T[]",
+          "required": true,
+          "description": "Array of data items to display in the grid"
+        },
+        {
+          "name": "rowKey",
+          "type": "keyof T | ((row: T) => string)",
+          "required": true,
+          "description": "Property name or function to get unique row identifier"
+        },
+        {
+          "name": "filterable",
+          "type": "string[]",
+          "description": "Array of column keys that should have filter inputs"
+        },
+        {
+          "name": "selectable",
+          "type": "boolean",
+          "default": "false",
+          "description": "Whether rows can be selected via checkboxes"
+        },
+        {
+          "name": "selected",
+          "type": "string[]",
+          "description": "Controlled selected row keys (used with onSelectChange)"
+        },
+        {
+          "name": "onSelectChange",
+          "type": "(keys: string[]) => void",
+          "description": "Callback when selection changes"
+        },
+        {
+          "name": "pageSize",
+          "type": "number",
+          "default": "10",
+          "description": "Number of items per page"
+        },
+        {
+          "name": "showPagination",
+          "type": "boolean",
+          "default": "true",
+          "description": "Whether to show pagination controls"
+        },
+        {
+          "name": "showColumnToggle",
+          "type": "boolean",
+          "default": "false",
+          "description": "Whether to show column visibility toggle"
+        },
+        {
+          "name": "loading",
+          "type": "boolean",
+          "default": "false",
+          "description": "Whether to show loading skeleton"
+        },
+        {
+          "name": "emptyMessage",
+          "type": "string",
+          "default": "No data",
+          "description": "Message shown when no data is available"
+        },
+        {
+          "name": "className",
+          "type": "string",
+          "description": "Additional CSS classes for the container"
+        },
+        {
+          "name": "onRowClick",
+          "type": "(row: T) => void",
+          "description": "Callback when a row is clicked"
+        },
+        {
+          "name": "defaultActions",
+          "type": "DefaultActionsConfig<T>",
+          "description": "Configuration for default row actions (view/edit/delete). See DefaultActionsConfig for details."
+        },
+        {
+          "name": "serverPagination",
+          "type": "ServerDataGridProp | null",
+          "description": "Server-side pagination prop (for controlled/server-fetched pagination)"
+        }
+      ],
+      "example": "<DataGrid\n  columns={[\n    { key: 'id', header: 'ID', sortable: true },\n    { key: 'name', header: 'Name', sortable: true },\n    { key: 'email', header: 'Email' }\n  ]}\n  data={users}\n  rowKey='id'\n  filterable={['name', 'email']}\n  selectable\n  pageSize={25}\n  onRowClick={(row) => console.log(row)}\n/>"
+    },
+    {
+      "name": "useServerDataGrid",
+      "import": "import { useServerDataGrid } from 'my-component-lib'",
+      "description": "Custom hook for fetching and managing server-side paginated data grid. Automatically handles Laravel encryption, column derivation, and pagination state.",
+      "props": [
+        {
+          "name": "url",
+          "type": "string",
+          "required": true,
+          "description": "API endpoint URL to fetch data from. Page parameter is appended automatically (e.g., /api/users?page=1)"
+        },
+        {
+          "name": "params",
+          "type": "Record<string, string | number>",
+          "description": "Query parameters to include in the request"
+        },
+        {
+          "name": "encrypt",
+          "type": "boolean",
+          "default": "false",
+          "description": "If true, expects Laravel-encrypted payload and decrypts it automatically"
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "description": "Laravel APP_KEY used for decryption. Pass import.meta.env['VITE_LARAVEL_KEY']"
+        },
+        {
+          "name": "decryptPayloadLog",
+          "type": "boolean",
+          "default": "false",
+          "description": "If true, logs the decrypted payload to the console"
+        },
+        {
+          "name": "columnOverrides",
+          "type": "Record<string, Partial<DataGridColumn<any>>>",
+          "description": "Override auto-derived column definitions per key. Example: { status: { render: (row) => <Badge>{row.status}</Badge> }, score: { sortable: true } }"
+        }
+      ],
+      "example": "const { data, columns, loading, pagination, goToPage, reload } = useServerDataGrid<User>({\n  url: '/api/users',\n  params: { status: 'active' },\n  encrypt: true,\n  key: import.meta.env['VITE_LARAVEL_KEY'],\n});\n\nreturn (\n  <DataGrid\n    columns={columns}\n    data={data}\n    rowKey='id'\n    loading={loading}\n    serverPagination={serverPagination}\n  />\n);"
+    },
+    {
+      "name": "DataGridColumn",
+      "import": "import type { DataGridColumn } from 'my-component-lib'",
+      "description": "Type definition for DataGrid column configuration",
+      "props": [
+        {
+          "name": "key",
+          "type": "keyof T | string",
+          "required": true,
+          "description": "Unique key identifying this column (must match a property in T)"
+        },
+        {
+          "name": "header",
+          "type": "ReactNode",
+          "required": true,
+          "description": "Column header display text or React node"
+        },
+        {
+          "name": "render",
+          "type": "(row: T, idx: number) => ReactNode",
+          "description": "Custom render function for cell content"
+        },
+        {
+          "name": "sortable",
+          "type": "boolean",
+          "description": "Whether this column is sortable"
+        },
+        {
+          "name": "width",
+          "type": "string",
+          "description": "Column width (e.g., '100px', '20%')"
+        },
+        {
+          "name": "align",
+          "type": "'left' | 'center' | 'right'",
+          "description": "Text alignment within the column"
+        }
+      ],
+      "example": "{ key: 'name', header: 'Name', sortable: true, width: '200px', align: 'left' }"
+    },
+    {
+      "name": "ServerDataGridProp",
+      "import": "import type { ServerDataGridProp } from 'my-component-lib'",
+      "description": "Type definition for server-side pagination in DataGrid",
+      "props": [
+        {
+          "name": "pagination",
+          "type": "ServerPagination",
+          "required": true,
+          "description": "Server pagination metadata from Laravel/API"
+        },
+        {
+          "name": "currentPage",
+          "type": "number",
+          "required": true,
+          "description": "Current active page number (1-based)"
+        },
+        {
+          "name": "goToPage",
+          "type": "(page: number) => void",
+          "required": true,
+          "description": "Function to navigate to a specific page"
+        }
+      ],
+      "example": "{ pagination: { total: 100, per_page: 10, last_page: 10 }, currentPage: 1, goToPage: (p) => setPage(p) }"
+    }
+  ]
+}

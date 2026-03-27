@@ -1,0 +1,161 @@
+{
+  "components": [
+    {
+      "name": "Table",
+      "description": "Enhanced DataGrid component with AI-agent friendly capabilities",
+      "props": {
+        "core": [
+          { "name": "data", "type": "T[]", "required": true },
+          { "name": "columns", "type": "Column<T>[]", "required": true },
+          { "name": "loading", "type": "boolean", "default": false },
+          { "name": "emptyState", "type": "React.ReactNode" },
+          { "name": "error", "type": "string | null" }
+        ],
+        "controlled_state": [
+          { "name": "searchValue", "type": "string" },
+          { "name": "onSearchChange", "type": "(value: string) => void" },
+          { "name": "page", "type": "number" },
+          { "name": "onPageChange", "type": "(page: number) => void" }
+        ],
+        "sorting": [
+          { "name": "sort", "type": "{ key: string; direction: 'asc' | 'desc' }[]" },
+          { "name": "onSortChange", "type": "(sort) => void" }
+        ],
+        "rows": [
+          { "name": "onRowClick", "type": "(item: T) => void" },
+          { "name": "onRowDoubleClick", "type": "(item: T) => void" },
+          { "name": "rowClassName", "type": "(item: T) => string" },
+          { "name": "expandable", "type": "boolean" },
+          { "name": "renderExpanded", "type": "(item: T) => React.ReactNode" }
+        ],
+        "columns_visibility": [
+          { "name": "columnVisibility", "type": "Record<string, boolean>" },
+          { "name": "onColumnVisibilityChange", "type": "(visibility) => void" }
+        ],
+        "export": [
+          { "name": "exportable", "type": "boolean" },
+          { "name": "onExport", "type": "(type: 'csv' | 'excel' | 'pdf') => void" }
+        ],
+        "advanced": [
+          { "name": "virtualized", "type": "boolean" },
+          { "name": "draggable", "type": "boolean" },
+          { "name": "onRowReorder", "type": "(data: T[]) => void" },
+          { "name": "keyboardNavigation", "type": "boolean" },
+          { "name": "theme", "type": "'light' | 'dark' | 'auto'" },
+          { "name": "meta", "type": "Record<string, any>" },
+          { "name": "actions", "type": "Record<string, (item: T) => void>" }
+        ],
+        "legacy": [
+          { "name": "searchable", "type": "boolean", "default": false },
+          { "name": "pagination", "type": "boolean", "default": false },
+          { "name": "itemsPerPage", "type": "number", "default": 10 },
+          { "name": "selectable", "type": "boolean", "default": false },
+          { "name": "onBulkDelete", "type": "(selectedIds: string[]) => void" },
+          { "name": "idKey", "type": "keyof T", "default": "id" },
+          { "name": "defaultActions", "type": "DefaultActionsConfig<T>" },
+          { "name": "serverPagination", "type": "ServerPaginationProp | null" },
+          { "name": "className", "type": "string" }
+        ]
+      }
+    },
+    {
+      "name": "Column",
+      "description": "Enhanced column definition with filtering, visibility, and formatting",
+      "props": [
+        { "name": "key", "type": "keyof T | string", "required": true },
+        { "name": "title", "type": "string", "required": true },
+        { "name": "type", "type": "'text' | 'image' | 'badge' | 'icon' | 'stack' | 'select' | 'toggle' | 'color' | 'checkbox'" },
+        { "name": "render", "type": "(item: T) => React.ReactNode" },
+        { "name": "width", "type": "number | string" },
+        { "name": "align", "type": "'left' | 'center' | 'right'" },
+        { "name": "sortable", "type": "boolean" },
+        { "name": "filterable", "type": "boolean" },
+        { "name": "filterType", "type": "'text' | 'select' | 'date' | 'range'" },
+        { "name": "hidden", "type": "boolean" },
+        { "name": "tooltip", "type": "(item: T) => string" },
+        { "name": "copyable", "type": "boolean" },
+        { "name": "onChange", "type": "(item: T, value: any) => void" },
+        { "name": "selectOptions", "type": "string[]" },
+        { "name": "stackProps", "type": "{ limit?: number; stacked?: boolean; shape?: 'circle' | 'square'; size?: number }" }
+      ]
+    },
+    {
+      "name": "useServerTable",
+      "description": "Hook for server-side pagination with debounce, transform, and callbacks",
+      "props": [
+        { "name": "url", "type": "string", "required": true },
+        { "name": "params", "type": "Record<string, string | number>" },
+        { "name": "encrypt", "type": "boolean", "default": false },
+        { "name": "key", "type": "string" },
+        { "name": "decryptPayloadLog", "type": "boolean", "default": false },
+        { "name": "columnOverrides", "type": "Record<string, Partial<Column<any>>>" },
+        { "name": "debounce", "type": "number", "default": 300 },
+        { "name": "transform", "type": "(response: any) => T[]" },
+        { "name": "manual", "type": "boolean" },
+        { "name": "onSuccess", "type": "(data: T[]) => void" },
+        { "name": "onError", "type": "(error: Error) => void" }
+      ],
+      "returns": {
+        "items": "T[]",
+        "columns": "Column<T>[]",
+        "loading": "boolean",
+        "error": "string | null",
+        "pagination": "ServerPagination | null",
+        "serverPagination": "ServerPaginationProp | null",
+        "goToPage": "(page: number) => void",
+        "reload": "() => void"
+      }
+    },
+    {
+      "name": "DefaultActionsConfig",
+      "description": "Configuration for View/Edit/Delete actions with permissions and hooks",
+      "props": [
+        { "name": "baseUrl", "type": "string", "required": true },
+        { "name": "idKey", "type": "keyof T", "default": "id" },
+        { "name": "position", "type": "'first' | 'last'", "default": "last" },
+        { "name": "editForm", "type": "ActionField[]" },
+        { "name": "viewForm", "type": "ActionField[]" },
+        { "name": "editFormGrid", "type": "number" },
+        { "name": "actionsSize", "type": "'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'", "default": "xs" },
+        { "name": "modalWidth", "type": "string", "default": "lg" },
+        { "name": "onSuccess", "type": "(action: 'edit' | 'delete', item: T) => void" },
+        { "name": "onSuccessNotif", "type": "ActionSuccessNotif" },
+        { "name": "deleteConfirm", "type": "{ title: string; message: string }" },
+        { "name": "permissions", "type": "(item: T) => { view?: boolean; edit?: boolean; delete?: boolean }" },
+        { "name": "beforeEdit", "type": "(item: T) => Promise<boolean>" },
+        { "name": "beforeDelete", "type": "(item: T) => Promise<boolean>" },
+        { "name": "viewButton", "type": "ActionButtonConfig" },
+        { "name": "editButton", "type": "ActionButtonConfig" },
+        { "name": "deleteButton", "type": "ActionButtonConfig" },
+        { "name": "extraActions", "type": "ExtraActionConfig<T>[]" }
+      ]
+    },
+    {
+      "name": "ActionField",
+      "description": "Form field definition for Edit/View modals",
+      "props": [
+        { "name": "key", "type": "string", "required": true },
+        { "name": "label", "type": "string", "required": true },
+        { "name": "type", "type": "ActionFieldType", "default": "input" },
+        { "name": "inputType", "type": "string" },
+        { "name": "options", "type": "string[] | { label: string; value: string }[]" },
+        { "name": "placeholder", "type": "string" },
+        { "name": "required", "type": "boolean", "default": false },
+        { "name": "min", "type": "number" },
+        { "name": "max", "type": "number" },
+        { "name": "step", "type": "number" },
+        { "name": "digits", "type": "number" },
+        { "name": "validation", "type": "RegExp | 'email' | 'url' | 'numeric' | 'alpha' | 'alphanumeric'" },
+        { "name": "validationMessage", "type": "string" },
+        { "name": "colSpan", "type": "number" },
+        { "name": "rowSpan", "type": "number" },
+        { "name": "render", "type": "(value: any, onChange: (v: any) => void) => React.ReactNode" }
+      ]
+    }
+  ],
+  "examples": {
+    "client_side": "const [searchValue, setSearchValue] = useState('')\nconst [sort, setSort] = useState([])\nconst [page, setPage] = useState(1)\n\n<Table\n  data={users}\n  columns={columns}\n  searchValue={searchValue}\n  onSearchChange={setSearchValue}\n  sort={sort}\n  onSortChange={setSort}\n  page={page}\n  onPageChange={setPage}\n  expandable\n  renderExpanded={(item) => <UserDetails user={item} />}\n  columnVisibility={{ email: false }}\n  onColumnVisibilityChange={setVisibility}\n  exportable\n  onExport={(type) => exportData(type)}\n  keyboardNavigation\n  theme=\"dark\"\n  meta={{ userId: 123 }}\n  actions={{ archive: (item) => archiveUser(item) }}\n/>",
+    "server_side": "const { items, loading, serverPagination, reload } = useServerTable({\n  url: '/api/users',\n  debounce: 300,\n  transform: (res) => res.data,\n  onSuccess: (data) => console.log('Loaded', data),\n  onError: (err) => console.error(err)\n})\n\n<Table\n  data={items}\n  columns={columns}\n  loading={loading}\n  serverPagination={serverPagination}\n  defaultActions={{\n    baseUrl: '/api/users',\n    editForm: [\n      { key: 'name', label: 'Name', required: true },\n      { key: 'email', label: 'Email', validation: 'email' }\n    ],\n    permissions: (item) => ({ edit: item.role === 'admin', delete: true }),\n    beforeDelete: async (item) => confirm('Delete?'),\n    deleteConfirm: { title: 'Delete User', message: 'Are you sure?' },\n    onSuccess: () => reload()\n  }}\n/>",
+    "ai_agent": "// AI-friendly controlled state for external logic\nconst [state, dispatch] = useReducer(tableReducer, initialState)\n\n<Table\n  data={state.data}\n  columns={state.columns}\n  loading={state.loading}\n  error={state.error}\n  searchValue={state.search}\n  onSearchChange={(v) => dispatch({ type: 'SEARCH', payload: v })}\n  sort={state.sort}\n  onSortChange={(s) => dispatch({ type: 'SORT', payload: s })}\n  page={state.page}\n  onPageChange={(p) => dispatch({ type: 'PAGE', payload: p })}\n  columnVisibility={state.columnVisibility}\n  onColumnVisibilityChange={(v) => dispatch({ type: 'VISIBILITY', payload: v })}\n  onRowClick={(item) => dispatch({ type: 'ROW_SELECT', payload: item })}\n  meta={state.meta}\n  actions={state.actions}\n/>"
+  }
+}

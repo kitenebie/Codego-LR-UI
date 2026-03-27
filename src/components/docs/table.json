@@ -1,0 +1,179 @@
+{
+  "components": [
+    {
+      "name": "Table",
+      "description": "Enhanced DataGrid component with AI-agent friendly capabilities",
+      "import": "import { Table } from '@juv/codego-react-ui'",
+      "props": {
+        "core": [
+          { "name": "data", "type": "T[]", "required": true, "description": "Array of data objects" },
+          { "name": "columns", "type": "Column<T>[]", "required": true, "description": "Column definitions" },
+          { "name": "loading", "type": "boolean", "default": false, "description": "Show loading state" },
+          { "name": "emptyState", "type": "React.ReactNode", "description": "Custom empty state UI" },
+          { "name": "error", "type": "string | null", "description": "Error message to display" }
+        ],
+        "controlled_state": [
+          { "name": "searchValue", "type": "string", "description": "Controlled search input value" },
+          { "name": "onSearchChange", "type": "(value: string) => void", "description": "Search change callback" },
+          { "name": "page", "type": "number", "description": "Current page (1-indexed)" },
+          { "name": "onPageChange", "type": "(page: number) => void", "description": "Page change callback" },
+          { "name": "sort", "type": "{ key: string; direction: 'asc' | 'desc' }[]", "description": "Multi-column sort state" },
+          { "name": "onSortChange", "type": "(sort) => void", "description": "Sort change callback" }
+        ],
+        "row_events": [
+          { "name": "onRowClick", "type": "(item: T) => void", "description": "Single click handler" },
+          { "name": "onRowDoubleClick", "type": "(item: T) => void", "description": "Double click handler" },
+          { "name": "rowClassName", "type": "(item: T) => string", "description": "Dynamic row CSS classes" }
+        ],
+        "expandable_rows": [
+          { "name": "expandable", "type": "boolean", "description": "Enable row expansion" },
+          { "name": "renderExpanded", "type": "(item: T) => React.ReactNode", "description": "Expanded row content" }
+        ],
+        "column_visibility": [
+          { "name": "columnVisibility", "type": "Record<string, boolean>", "description": "Column visibility state" },
+          { "name": "onColumnVisibilityChange", "type": "(visibility) => void", "description": "Visibility change callback" }
+        ],
+        "export": [
+          { "name": "exportable", "type": "boolean", "description": "Show export button" },
+          { "name": "onExport", "type": "(type: 'csv' | 'excel' | 'pdf') => void", "description": "Export handler" }
+        ],
+        "advanced": [
+          { "name": "virtualized", "type": "boolean", "description": "Enable virtualization for large datasets" },
+          { "name": "draggable", "type": "boolean", "description": "Enable drag & drop row reordering" },
+          { "name": "onRowReorder", "type": "(data: T[]) => void", "description": "Row reorder callback" },
+          { "name": "keyboardNavigation", "type": "boolean", "description": "Enable keyboard navigation" },
+          { "name": "theme", "type": "'light' | 'dark' | 'auto'", "description": "Theme mode" },
+          { "name": "meta", "type": "Record<string, any>", "description": "AI-friendly metadata" },
+          { "name": "actions", "type": "Record<string, (item: T) => void>", "description": "Custom action registry" }
+        ],
+        "legacy": [
+          { "name": "searchable", "type": "boolean", "default": false, "description": "Enable search" },
+          { "name": "pagination", "type": "boolean", "default": false, "description": "Enable client-side pagination" },
+          { "name": "itemsPerPage", "type": "number", "default": 10, "description": "Items per page" },
+          { "name": "selectable", "type": "boolean", "default": false, "description": "Enable row selection" },
+          { "name": "onBulkDelete", "type": "(selectedIds: string[]) => void", "description": "Bulk delete handler" },
+          { "name": "idKey", "type": "keyof T", "default": "id", "description": "ID field key" },
+          { "name": "defaultActions", "type": "DefaultActionsConfig<T>", "description": "CRUD actions config" },
+          { "name": "serverPagination", "type": "ServerPaginationProp | null", "description": "Server pagination config" },
+          { "name": "className", "type": "string", "description": "Additional CSS classes" }
+        ]
+      }
+    },
+    {
+      "name": "Column",
+      "description": "Column definition with filtering, visibility, and formatting",
+      "import": "import type { Column } from '@juv/codego-react-ui'",
+      "props": [
+        { "name": "key", "type": "keyof T | string", "required": true, "description": "Data property key" },
+        { "name": "title", "type": "string", "required": true, "description": "Column header text" },
+        { "name": "type", "type": "'text' | 'image' | 'badge' | 'icon' | 'stack' | 'select' | 'toggle' | 'color' | 'checkbox'", "description": "Cell render type" },
+        { "name": "width", "type": "number | string", "description": "Column width in px or CSS" },
+        { "name": "align", "type": "'left' | 'center' | 'right'", "description": "Text alignment" },
+        { "name": "sortable", "type": "boolean", "description": "Enable sorting" },
+        { "name": "filterable", "type": "boolean", "description": "Enable filtering" },
+        { "name": "filterType", "type": "'text' | 'select' | 'date' | 'range'", "description": "Filter type" },
+        { "name": "hidden", "type": "boolean", "description": "Hide column" },
+        { "name": "tooltip", "type": "(item: T) => string", "description": "Tooltip text generator" },
+        { "name": "copyable", "type": "boolean", "description": "Allow copying cell content" },
+        { "name": "render", "type": "(item: T) => React.ReactNode", "description": "Custom cell renderer" },
+        { "name": "onChange", "type": "(item: T, value: any) => void", "description": "Cell change callback" },
+        { "name": "selectOptions", "type": "string[]", "description": "Options for select type" },
+        { "name": "stackProps", "type": "{ limit?: number; stacked?: boolean; shape?: 'circle' | 'square'; size?: number }", "description": "Avatar stack props" }
+      ]
+    },
+    {
+      "name": "useServerTable",
+      "description": "Hook for server-side pagination with debounce, transform, and callbacks",
+      "import": "import { useServerTable } from '@juv/codego-react-ui'",
+      "options": [
+        { "name": "url", "type": "string", "required": true, "description": "API endpoint" },
+        { "name": "params", "type": "Record<string, string | number>", "description": "Extra query params" },
+        { "name": "encrypt", "type": "boolean", "default": false, "description": "Laravel encryption" },
+        { "name": "key", "type": "string", "description": "APP_KEY for decryption" },
+        { "name": "decryptPayloadLog", "type": "boolean", "default": false, "description": "Debug logging" },
+        { "name": "columnOverrides", "type": "Record<string, Partial<Column<any>>>", "description": "Column overrides" },
+        { "name": "debounce", "type": "number", "default": 300, "description": "Search debounce (ms)" },
+        { "name": "transform", "type": "(response: any) => T[]", "description": "Response transformer" },
+        { "name": "manual", "type": "boolean", "default": false, "description": "Manual fetch control" },
+        { "name": "refresh", "type": "boolean", "default": false, "description": "Enable manual refresh via reload()/refresh()" },
+        { "name": "refreshInterval", "type": "number", "default": 0, "description": "Auto-refresh interval in ms. 0 = disabled" },
+        { "name": "hardReload", "type": "React.MutableRefObject<() => void>", "description": "Pass a ref — the hook assigns reload() to it so any external button or function can call hardReloadRef.current() to trigger a refetch" },
+        { "name": "onSuccess", "type": "(data: T[]) => void", "description": "Success callback" },
+        { "name": "onError", "type": "(error: Error) => void", "description": "Error callback" }
+      ],
+      "returns": {
+        "data": "T[]",
+        "columns": "Column<T>[]",
+        "loading": "boolean",
+        "error": "string | null",
+        "pagination": "ServerPagination | null",
+        "serverPagination": "ServerPaginationProp | null",
+        "searchValue": "string",
+        "onSearchChange": "(value: string) => void",
+        "goToPage": "(page: number) => void",
+        "reload": "() => void"
+      }
+    },
+    {
+      "name": "DefaultActionsConfig",
+      "description": "Configuration for View/Edit/Delete actions with permissions and hooks",
+      "import": "import type { DefaultActionsConfig } from '@juv/codego-react-ui'",
+      "props": [
+        { "name": "baseUrl", "type": "string", "required": true, "description": "API base URL" },
+        { "name": "idKey", "type": "keyof T", "default": "id", "description": "ID field key" },
+        { "name": "position", "type": "'first' | 'last'", "default": "last", "description": "Actions column position" },
+        { "name": "editForm", "type": "ActionField[]", "description": "Edit form fields" },
+        { "name": "viewForm", "type": "ActionField[]", "description": "View form fields. Supports type: 'image' to render an image preview" },
+        { "name": "viewFormGrid", "type": "number", "description": "Grid columns for the view form layout (e.g. 2 = two-column grid). Supports colSpan/rowSpan on each field" },
+        { "name": "editFormGrid", "type": "number", "description": "Grid columns (e.g., 2)" },
+        { "name": "actionsSize", "type": "'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'", "default": "xs", "description": "Button size" },
+        { "name": "modalWidth", "type": "ModalWidth", "default": "lg", "description": "Modal width" },
+        { "name": "onSuccess", "type": "(action: 'edit' | 'delete', item: T) => void", "description": "Success callback" },
+        { "name": "onSuccessNotif", "type": "ActionSuccessNotif", "description": "Success notification config" },
+        { "name": "deleteConfirm", "type": "{ title: string; message: string }", "description": "Delete confirmation dialog" },
+        { "name": "permissions", "type": "(item: T) => { view?: boolean; edit?: boolean; delete?: boolean }", "description": "Permission checker" },
+        { "name": "beforeEdit", "type": "(item: T) => Promise<boolean>", "description": "Pre-edit hook" },
+        { "name": "beforeDelete", "type": "(item: T) => Promise<boolean>", "description": "Pre-delete hook" },
+        { "name": "viewButton", "type": "ActionButtonConfig", "description": "View button config" },
+        { "name": "editButton", "type": "ActionButtonConfig", "description": "Edit button config" },
+        { "name": "deleteButton", "type": "ActionButtonConfig", "description": "Delete button config" },
+        { "name": "extraActions", "type": "ExtraActionConfig<T>[]", "description": "Extra action buttons" },
+        { "name": "onReload", "type": "() => void", "description": "Called after edit/delete to trigger server refetch. Pass reload from useServerTable" }
+      ]
+    },
+    {
+      "name": "ActionField",
+      "description": "Form field definition for Edit/View modals",
+      "import": "import type { ActionField } from '@juv/codego-react-ui'",
+      "props": [
+        { "name": "key", "type": "string", "required": true, "description": "Data property key" },
+        { "name": "label", "type": "string", "required": true, "description": "Field label" },
+        { "name": "type", "type": "'input' | 'password' | 'textarea' | 'checkbox' | 'toggle' | 'select' | 'radio' | 'slider' | 'tag-input' | 'otp' | 'combobox' | 'color-picker' | 'date-range' | 'rich-text' | 'file-upload' | 'repeater'", "default": "input", "description": "Field type" },
+        { "name": "inputType", "type": "string", "description": "HTML input type" },
+        { "name": "options", "type": "string[] | { label: string; value: string }[]", "description": "Select/radio options" },
+        { "name": "placeholder", "type": "string", "description": "Placeholder text" },
+        { "name": "required", "type": "boolean", "default": false, "description": "Required field" },
+        { "name": "min", "type": "number", "description": "Min value (slider)" },
+        { "name": "max", "type": "number", "description": "Max value (slider)" },
+        { "name": "step", "type": "number", "description": "Step increment (slider)" },
+        { "name": "digits", "type": "number", "description": "OTP digits" },
+        { "name": "validation", "type": "RegExp | 'email' | 'url' | 'numeric' | 'alpha' | 'alphanumeric'", "description": "Validation rule" },
+        { "name": "validationMessage", "type": "string", "description": "Validation error message" },
+        { "name": "colSpan", "type": "number", "description": "Grid column span" },
+        { "name": "rowSpan", "type": "number", "description": "Grid row span" },
+        { "name": "hidden", "type": "boolean", "description": "Hide field" },
+        { "name": "viewType", "type": "'text' | 'image' | 'checkbox' | 'toggle' | 'attachment' | 'text-url' | 'text-url-open-other-tabs' | 'image-url' | 'image-url-open-other-tabs'", "description": "Display type for viewForm — controls how the value is rendered in the View modal. Overrides type for view-only rendering." },
+        { "name": "width", "type": "number | string", "description": "Width applied to the field value in the View modal (e.g. 120, '100%', '8rem')" },
+        { "name": "height", "type": "number | string", "description": "Height applied to the field value in the View modal (e.g. 80, '5rem')" },
+        { "name": "render", "type": "(value: any, onChange: (v: any) => void) => React.ReactNode", "description": "Custom renderer — receives current value and onChange" },
+        { "name": "component", "type": "React.ReactNode", "description": "Drop-in React component rendered as-is. Bypasses label, built-in renderer, and validation. e.g. { component: <Input value={name} onChange={(v) => setName(v.target.value)} label='Name' /> }" }
+      ]
+    }
+  ],
+  "examples": {
+    "basic": "import { Table } from '@juv/codego-react-ui'\n\n<Table\n  data={users}\n  columns={[\n    { key: 'name', title: 'Name', sortable: true },\n    { key: 'email', title: 'Email' },\n    { key: 'status', title: 'Status', type: 'badge' },\n  ]}\n/>",
+    "server_side": "import { Table, useServerTable } from '@juv/codego-react-ui'\n\nconst { data, columns, loading, serverPagination, reload } = useServerTable({\n  url: '/api/users',\n  debounce: 300,\n  transform: (res) => res.data,\n  onSuccess: (data) => console.log('Loaded', data),\n})\n\n<Table\n  data={data}\n  columns={columns}\n  loading={loading}\n  serverPagination={serverPagination}\n  defaultActions={{\n    baseUrl: '/api/users',\n    editForm: [\n      { key: 'name', label: 'Name', required: true },\n      { key: 'email', label: 'Email', validation: 'email' }\n    ],\n    permissions: (item) => ({ edit: item.role === 'admin', delete: true }),\n    beforeDelete: async (item) => confirm('Delete?'),\n    deleteConfirm: { title: 'Delete User', message: 'Are you sure?' },\n    onSuccess: () => reload(),\n  }}\n/>",
+    "controlled_state": "import { Table } from '@juv/codego-react-ui'\nimport { useState } from 'react'\n\nconst [searchValue, setSearchValue] = useState('')\nconst [page, setPage] = useState(1)\nconst [sort, setSort] = useState([])\nconst [columnVisibility, setColumnVisibility] = useState({})\n\n<Table\n  data={data}\n  columns={columns}\n  searchValue={searchValue}\n  onSearchChange={setSearchValue}\n  page={page}\n  onPageChange={setPage}\n  sort={sort}\n  onSortChange={setSort}\n  columnVisibility={columnVisibility}\n  onColumnVisibilityChange={setColumnVisibility}\n  expandable\n  renderExpanded={(item) => <UserDetails user={item} />}\n  exportable\n  onExport={(type) => exportData(type)}\n  keyboardNavigation\n  theme=\"dark\"\n  meta={{ userId: 123 }}\n  actions={{\n    archive: (item) => archiveUser(item),\n    duplicate: (item) => duplicateUser(item),\n  }}\n/>",
+    "ai_agent": "import { Table } from '@juv/codego-react-ui'\nimport { useReducer } from 'react'\n\nconst tableReducer = (state, action) => {\n  switch (action.type) {\n    case 'SEARCH': return { ...state, search: action.payload, page: 1 }\n    case 'SORT': return { ...state, sort: action.payload }\n    case 'PAGE': return { ...state, page: action.payload }\n    case 'VISIBILITY': return { ...state, columnVisibility: action.payload }\n    case 'ROW_SELECT': return { ...state, selectedRow: action.payload }\n    default: return state\n  }\n}\n\nconst [state, dispatch] = useReducer(tableReducer, initialState)\n\n<Table\n  data={state.data}\n  columns={state.columns}\n  loading={state.loading}\n  error={state.error}\n  searchValue={state.search}\n  onSearchChange={(v) => dispatch({ type: 'SEARCH', payload: v })}\n  sort={state.sort}\n  onSortChange={(s) => dispatch({ type: 'SORT', payload: s })}\n  page={state.page}\n  onPageChange={(p) => dispatch({ type: 'PAGE', payload: p })}\n  columnVisibility={state.columnVisibility}\n  onColumnVisibilityChange={(v) => dispatch({ type: 'VISIBILITY', payload: v })}\n  onRowClick={(item) => dispatch({ type: 'ROW_SELECT', payload: item })}\n  meta={state.meta}\n  actions={state.actions}\n/>"
+  }
+}

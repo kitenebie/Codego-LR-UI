@@ -1,0 +1,1 @@
+export type AnyState = Record<string, any>;

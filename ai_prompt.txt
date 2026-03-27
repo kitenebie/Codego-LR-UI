@@ -1,0 +1,40 @@
+
+--
+
+in src\components\ui\data-grid.tsx Mag-add ng JSDoc / TypeScript comments
+
+
+
+in src\components\docs\data-grid.json create a documentation (very easy to understanf) for src\components\ui\table.tsx  ### Example: 
+```json
+{
+  "components": [
+    {
+      "name": "Button",
+      "import": "import { Button } from 'my-component-lib'",
+      "description": "Reusable button component",
+      "props": [
+        {
+          "name": "label",
+          "type": "string",
+          "required": true,
+          "description": "Text inside the button"
+        },
+        {
+          "name": "variant",
+          "type": "'primary' | 'secondary'",
+          "default": "primary",
+          "description": "Button style"
+        },
+        {
+          "name": "onClick",
+          "type": "() => void",
+          "description": "Click handler"
+        }
+      ],
+      "example": "<Button label='Click me' variant='primary' />"
+    }
+  ]
+}
+
+IN src\pages\table-docs.tsx REVISE THE PAGE AND THE SAMPLE USE THE DATA IN src\components\docs\data-grid.json

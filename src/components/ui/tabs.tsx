@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/src/lib/utils"
+import { Animate, type AnimationType } from "./container"
 
 export type TabVariant = "line" | "pill" | "boxed" | "lifted"
 export type TabSize = "sm" | "md" | "lg"
@@ -21,6 +22,8 @@ export interface TabsProps {
   variant?: TabVariant
   size?: TabSize
   fullWidth?: boolean
+  animationType?: AnimationType
+  animationDelay?: number
   className?: string
 }
 
@@ -62,6 +65,8 @@ export function Tabs({
   variant = "line",
   size = "md",
   fullWidth = false,
+  animationType,
+  animationDelay = 0,
   className,
 }: TabsProps) {
   const [internal, setInternal] = React.useState(defaultValue ?? items[0]?.value ?? "")
@@ -74,7 +79,7 @@ export function Tabs({
 
   const activeItem = items.find((i) => i.value === active)
 
-  return (
+  const inner = (
     <div className={cn("w-full", className)}>
       {/* Tab bar */}
       <div className={cn("flex", fullWidth && "w-full", variantTrack[variant])}>
@@ -102,4 +107,8 @@ export function Tabs({
       )}
     </div>
   )
+
+  return animationType
+    ? <Animate animationType={animationType} delay={animationDelay}>{inner}</Animate>
+    : inner
 }

@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "@/src/lib/utils"
+import { Animate, type AnimationType } from "./container"
 
 export type BadgeVariant = "default" | "success" | "error" | "warning" | "info" | "outline" | "ghost"
 export type BadgeSize = "sm" | "md" | "lg"
@@ -12,6 +13,8 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   icon?: React.ReactNode
   removable?: boolean
   onRemove?: () => void
+  animationType?: AnimationType
+  animationDelay?: number
 }
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
@@ -48,11 +51,13 @@ export function Badge({
   icon,
   removable = false,
   onRemove,
+  animationType,
+  animationDelay = 0,
   className,
   children,
   ...props
 }: BadgeProps) {
-  return (
+  const inner = (
     <span
       className={cn(
         "inline-flex items-center border font-medium leading-none",
@@ -80,4 +85,8 @@ export function Badge({
       )}
     </span>
   )
+
+  return animationType
+    ? <Animate animationType={animationType} delay={animationDelay} style={{ display: "inline-flex" }}>{inner}</Animate>
+    : inner
 }

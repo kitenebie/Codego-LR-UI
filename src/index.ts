@@ -1,3 +1,7 @@
+// ─── Animate Container ───────────────────────────────────────────────────────
+export { Animate } from "@/src/components/ui/container"
+export type { AnimateProps, AnimationType } from "@/src/components/ui/container"
+
 // ─── Authentication ──────────────────────────────────────────────────────────
 export { Authentication } from "@/src/components/ui/authentication"
 export type { AuthenticationProps, AuthField, AuthView, AuthVariant } from "@/src/components/ui/authentication"
@@ -31,7 +35,20 @@ export { Calendar, EVENT_COLORS } from "@/src/components/ui/calendar"
 export type { CalendarEvent, CalendarProps, CalendarView } from "@/src/components/ui/calendar"
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "@/src/components/ui/card"
+export {
+  Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent,
+  CardFlat, CardElevated, CardOutlined, CardGhost,
+  CardGlass, CardGradientPrimary, CardGradientDark, CardGradientSunset, CardGradientOcean, CardGradientForest,
+  CardGlowPrimary, CardGlowSuccess, CardGlowDanger, CardGlowWarning, CardGlowInfo,
+  CardTintedPrimary, CardTintedSuccess, CardTintedDanger, CardTintedWarning, CardTintedInfo,
+  CardBorderTopPrimary, CardBorderTopSuccess, CardBorderTopDanger, CardBorderTopWarning,
+  CardBorderLeftPrimary, CardBorderLeftSuccess, CardBorderLeftDanger, CardBorderLeftWarning,
+  CardInteractive, CardInteractiveGlow,
+  CardCompact, CardWide, CardRounded, CardSharp, CardDashed, CardDashedPrimary,
+  CardNoise, CardMesh, CardDark, CardLight, CardFrostedDark, CardFrostedLight,
+  CardStripeAccent, CardStripeBottom,
+  CardImageHeader, CardAvatar, CardStatMini, CardPricing, CardNotification, CardSkeleton,
+} from "@/src/components/ui/card"
 
 // ─── Checkbox ─────────────────────────────────────────────────────────────────
 export { Checkbox } from "@/src/components/ui/checkbox"

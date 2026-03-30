@@ -1,6 +1,7 @@
 import * as React from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { Animate, type AnimationType } from "./container"
 
 export type SectionVariant = "default" | "card" | "bordered" | "ghost"
 
@@ -14,6 +15,8 @@ export interface SectionProps {
   collapsible?: boolean
   defaultOpen?: boolean
   divider?: boolean
+  animationType?: AnimationType
+  animationDelay?: number
   className?: string
   contentClassName?: string
 }
@@ -49,10 +52,27 @@ export function SectionBlock({
   collapsible = false,
   defaultOpen = true,
   divider = false,
+  animationType,
+  animationDelay = 0,
   className,
   contentClassName,
 }: SectionProps) {
   const [open, setOpen] = React.useState(defaultOpen)
+
+  if (animationType) {
+    return (
+      <Animate animationType={animationType} delay={animationDelay} className={cn(variantWrap[variant], className)}>
+        <SectionBlock
+          title={title} description={description} icon={icon} action={action}
+          variant={variant} collapsible={collapsible} defaultOpen={defaultOpen}
+          divider={divider} contentClassName={contentClassName}
+          className=""
+        >
+          {children}
+        </SectionBlock>
+      </Animate>
+    )
+  }
 
   return (
     <div className={cn(variantWrap[variant], className)}>

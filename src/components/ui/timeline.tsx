@@ -1,6 +1,7 @@
 import * as React from "react"
 import { CheckCircle, XCircle, AlertTriangle, Info, Circle } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { Animate, type AnimationType } from "./container"
 
 export type TimelineVariant = "default" | "success" | "error" | "warning" | "info"
 
@@ -17,6 +18,8 @@ export interface TimelineItem {
 export interface TimelineProps {
   items: TimelineItem[]
   align?: "left" | "alternate"
+  animationType?: AnimationType
+  animationDelay?: number
   className?: string
 }
 
@@ -44,15 +47,16 @@ const DEFAULT_ICON: Record<TimelineVariant, React.ReactNode> = {
   info:    <Info className="h-3.5 w-3.5" />,
 }
 
-export function Timeline({ items, align = "left", className }: TimelineProps) {
+export function Timeline({ items, align = "left", animationType, animationDelay = 0, className }: TimelineProps) {
   return (
     <div className={cn("relative", className)}>
       {items.map((item, i) => {
         const variant = item.variant ?? "default"
         const isLast = i === items.length - 1
         const isRight = align === "alternate" && i % 2 === 1
+        const itemDelay = animationDelay + i * 80
 
-        return (
+        const content = (
           <div key={item.id ?? i} className={cn("relative flex gap-4", align === "alternate" && "justify-center", isRight && "flex-row-reverse")}>
             {/* Line + dot column */}
             <div className="flex flex-col items-center">
@@ -80,6 +84,10 @@ export function Timeline({ items, align = "left", className }: TimelineProps) {
             </div>
           </div>
         )
+
+        return animationType
+          ? <Animate key={item.id ?? i} animationType={animationType} delay={itemDelay}>{content}</Animate>
+          : content
       })}
     </div>
   )

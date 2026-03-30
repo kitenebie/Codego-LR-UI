@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Check, X } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { Animate, type AnimationType } from "./container"
 
 export type StepStatus = "complete" | "current" | "upcoming" | "error"
 
@@ -19,6 +20,8 @@ export interface StepperProps {
   onChange?: (step: number) => void
   orientation?: "horizontal" | "vertical"
   clickable?: boolean
+  animationType?: AnimationType
+  animationDelay?: number
   className?: string
 }
 
@@ -42,6 +45,8 @@ export function Stepper({
   onChange,
   orientation = "horizontal",
   clickable = false,
+  animationType,
+  animationDelay = 0,
   className,
 }: StepperProps) {
   const [internal, setInternal] = React.useState(defaultCurrent)
@@ -55,7 +60,7 @@ export function Stepper({
 
   const isHorizontal = orientation === "horizontal"
 
-  return (
+  const inner = (
     <div className={cn("w-full", className)}>
       {/* Step indicators */}
       <div className={cn(
@@ -139,4 +144,8 @@ export function Stepper({
       )}
     </div>
   )
+
+  return animationType
+    ? <Animate animationType={animationType} delay={animationDelay}>{inner}</Animate>
+    : inner
 }

@@ -1,5 +1,6 @@
 import * as React from "react"
 import { AlertTriangle, CheckCircle, Trash2, X } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/src/lib/utils"
 import { Button } from "./button"
 import { Input } from "./input"
@@ -49,23 +50,36 @@ function ModalBase({
     }
   }, [isOpen, unclosable, onClose])
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={() => !unclosable && onClose?.()}
-      />
-      <div
-        className={cn(
-          "relative z-50 w-full max-w-md border border-white/10 bg-background/90 backdrop-blur-xl shadow-2xl rounded-xl",
-          className
-        )}
-      >
-        {children}
-      </div>
-    </div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="modal-base-root"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={() => !unclosable && onClose?.()}
+          />
+          <motion.div
+            initial={{ scale: 0.95, y: 8 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.95, y: 8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={cn(
+              "relative z-50 w-full max-w-md border border-white/10 bg-background/90 backdrop-blur-xl shadow-2xl rounded-xl",
+              className
+            )}
+          >
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

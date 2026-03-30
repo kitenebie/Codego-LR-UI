@@ -1,6 +1,7 @@
 import * as React from "react"
 import { cn } from "@/src/lib/utils"
 import { Card, CardContent } from "./card"
+import { Animate, type AnimationType } from "./container"
 
 export interface WidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   // — Data
@@ -32,6 +33,8 @@ export interface WidgetProps extends React.HTMLAttributes<HTMLDivElement> {
   // — Animation
   animate?: boolean          // count-up on value
   pulse?: boolean            // pulse ring on icon
+  animationType?: AnimationType
+  animationDelay?: number
 
   // — Interaction
   onClick?: () => void
@@ -102,6 +105,8 @@ export function Widget({
   loading = false,
   animate = false,
   pulse = false,
+  animationType,
+  animationDelay = 0,
   onClick,
   className,
   ...props
@@ -112,7 +117,7 @@ export function Widget({
 
   const s = sizeMap[size]
 
-  return (
+  const inner = (
     <Card
       className={cn(
         "overflow-hidden transition-all duration-200",
@@ -198,4 +203,8 @@ export function Widget({
       </CardContent>
     </Card>
   )
+
+  return animationType
+    ? <Animate animationType={animationType} delay={animationDelay}>{inner}</Animate>
+    : inner
 }

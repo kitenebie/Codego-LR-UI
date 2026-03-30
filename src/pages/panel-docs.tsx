@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Playground } from "../components/playground"
 import { DocsLayout, Section } from "../components/ui/toc"
-import { Panel, PanelSidebarItem, PanelSidebarGroup, MobilePanel, TabletPanel } from "../components/ui/panel"
+import { Panel, PanelSidebarItem, PanelSidebarGroup } from "../components/ui/panel"
 import { Badge } from "../components/ui/badge"
 import { PropsTable } from "../components/ui/props-table"
 import { PanelSettings } from "../components/ui/PanelSettings"
@@ -15,6 +15,8 @@ import {
   Plus,
   Boxes,
   UserCircle,
+  BarChart2,
+  CreditCard,
 } from "lucide-react"
 
 const TOC = [
@@ -28,6 +30,7 @@ const TOC = [
   { id: "themetoggle", label: "Theme Toggle" },
   { id: "settingspage", label: "Settings Page" },
   { id: "mobile-bottom-tabs", label: "Mobile — Bottom Tabs" },
+  { id: "mobile-bottom-tabs-groups", label: "Mobile — Bottom Tabs + Groups" },
   { id: "mobile-drawer", label: "Mobile — Drawer" },
   { id: "tablet", label: "Tablet Panel" },
   { id: "props", label: "Props" },
@@ -39,6 +42,9 @@ const PAGE_CONTENT: Record<string, { title: string; body: string }> = {
   users: { title: "Users", body: "Manage team members, roles, and permissions from this panel." },
   files: { title: "Files", body: "Browse, upload, and organise your project files and assets here." },
   settings: { title: "Settings", body: "Configure your account preferences, integrations, and notification settings." },
+  analytics: { title: "Analytics", body: "View detailed reports, charts, and usage statistics for your workspace." },
+  notifications: { title: "Notifications", body: "Review and manage your alerts, mentions, and system notifications." },
+  billing: { title: "Billing", body: "Manage your subscription plan, invoices, and payment methods." },
 }
 
 function PageContent({ active }: { active: string }) {
@@ -80,33 +86,72 @@ const MOBILE_TABS = [
   { key: "settings", label: "Settings", icon: Settings },
 ]
 
-function MobilePanelDemo({ variant }: { variant: "bottom-tabs" | "drawer" }) {
+function MobilePanelGroupDemo() {
   const [active, setActive] = useState("dashboard")
   return (
-    <MobilePanel
-      variant={variant}
-      title="My App"
-      tabs={MOBILE_TABS}
-      activeTab={active}
-      onTabChange={setActive}
+    <Panel
+      mobileTabs={MOBILE_TABS}
+      mobileVariant="bottom-tabs"
+      activeMobileTab={active}
+      onMobileTabChange={setActive}
+      topbar={<span className="font-semibold text-sm">My App</span>}
+      topbarTrailing={<Bell className="h-4 w-4 text-muted-foreground" />}
+      sidebarBrand={{ icon: <Boxes className="h-5 w-5 text-primary" />, title: "My App" }}
+      sidebar={
+        <>
+          <PanelSidebarGroup title="Main">
+            <PanelSidebarItem icon={LayoutDashboard} label="Dashboard" active={active === "dashboard"} onClick={() => setActive("dashboard")} />
+            <PanelSidebarItem icon={Users} label="Users" active={active === "users"} onClick={() => setActive("users")} />
+            <PanelSidebarItem icon={BarChart2} label="Analytics" active={active === "analytics"} onClick={() => setActive("analytics")} />
+          </PanelSidebarGroup>
+          <PanelSidebarGroup title="Manage">
+            <PanelSidebarItem icon={FileText} label="Files" active={active === "files"} onClick={() => setActive("files")} />
+            <PanelSidebarItem icon={Bell} label="Notifications" active={active === "notifications"} onClick={() => setActive("notifications")} />
+          </PanelSidebarGroup>
+          <PanelSidebarGroup title="Account">
+            <PanelSidebarItem icon={CreditCard} label="Billing" active={active === "billing"} onClick={() => setActive("billing")} />
+            <PanelSidebarItem icon={Settings} label="Settings" active={active === "settings"} onClick={() => setActive("settings")} />
+          </PanelSidebarGroup>
+        </>
+      }
+      height="h-[600px]"
+      className="max-w-sm"
     >
       <PageContent active={active} />
-    </MobilePanel>
+    </Panel>
   )
 }
 
+function MobilePanelDemo({ variant }: { variant: string }) {
+  const [active, setActive] = useState("dashboard")
+  return (
+    <Panel
+      variant={variant as any}
+      mobileTabs={MOBILE_TABS}
+      mobileVariant={variant}
+      activeMobileTab={active}
+      onMobileTabChange={setActive}
+      topbar={<span className="font-semibold text-sm">My App</span>}
+      height="h-[600px]"
+      className="max-w-sm"
+    >
+      <PageContent active={active} />
+    </Panel>
+  )
+}
 function TabletPanelDemo() {
   const [active, setActive] = useState("dashboard")
   return (
-    <TabletPanel
+    <Panel
       collapsible
       defaultCollapsed
       topbar={<span className="font-semibold text-sm">Dashboard</span>}
       sidebarBrand={{ icon: <Boxes className="h-5 w-5 text-primary" />, title: "My Project" }}
       sidebar={<NavItems active={active} setActive={setActive} />}
+      tabletBreakpoint={0}
     >
       <PageContent active={active} />
-    </TabletPanel>
+    </Panel>
   )
 }
 
@@ -545,6 +590,52 @@ const [active, setActive] = useState("settings")
         >
           <div className="flex justify-center w-full">
             <MobilePanelDemo variant="bottom-tabs" />
+          </div>
+        </Playground>
+      </Section>
+
+      <Section id="mobile-bottom-tabs-groups">
+        <Playground
+          title="Mobile Panel — Bottom Tabs + Groups"
+          description="Bottom tab bar for primary navigation combined with grouped sidebar items accessible via the drawer. Tap a bottom tab to switch pages; the drawer exposes the full grouped nav."
+          code={`const TABS = [
+  { key: "dashboard", label: "Home",     icon: LayoutDashboard },
+  { key: "users",     label: "Users",    icon: Users },
+  { key: "files",     label: "Files",    icon: FileText },
+  { key: "settings", label: "Settings", icon: Settings },
+]
+
+<Panel
+  mobileTabs={TABS}
+  mobileVariant="bottom-tabs"
+  activeMobileTab={active}
+  onMobileTabChange={setActive}
+  topbar={<span className="font-semibold text-sm">My App</span>}
+  topbarTrailing={<Bell className="h-4 w-4 text-muted-foreground" />}
+  sidebarBrand={{ icon: <Boxes className="h-5 w-5 text-primary" />, title: "My App" }}
+  sidebar={
+    <>
+      <PanelSidebarGroup title="Main">
+        <PanelSidebarItem icon={LayoutDashboard} label="Dashboard" active={active === "dashboard"} onClick={() => setActive("dashboard")} />
+        <PanelSidebarItem icon={Users}           label="Users"     active={active === "users"}     onClick={() => setActive("users")} />
+        <PanelSidebarItem icon={BarChart2}       label="Analytics" active={active === "analytics"} onClick={() => setActive("analytics")} />
+      </PanelSidebarGroup>
+      <PanelSidebarGroup title="Manage">
+        <PanelSidebarItem icon={FileText} label="Files"         active={active === "files"}         onClick={() => setActive("files")} />
+        <PanelSidebarItem icon={Bell}     label="Notifications" active={active === "notifications"} onClick={() => setActive("notifications")} />
+      </PanelSidebarGroup>
+      <PanelSidebarGroup title="Account">
+        <PanelSidebarItem icon={CreditCard} label="Billing"  active={active === "billing"}  onClick={() => setActive("billing")} />
+        <PanelSidebarItem icon={Settings}   label="Settings" active={active === "settings"} onClick={() => setActive("settings")} />
+      </PanelSidebarGroup>
+    </>
+  }
+>
+  <PageContent active={active} />
+</Panel>`}
+        >
+          <div className="flex justify-center w-full">
+            <MobilePanelGroupDemo />
           </div>
         </Playground>
       </Section>

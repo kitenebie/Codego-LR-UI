@@ -41,6 +41,7 @@
  */
 import * as React from "react"
 import { createPortal } from "react-dom"
+import { AnimatePresence, motion } from "motion/react"
 import { decryptLaravelPayload } from "../tools/decryptPayload"
 import axios from "axios"
 import { ChevronLeft, ChevronRight, Search, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, X, Eye, Pencil, Trash, Loader2 } from "lucide-react"
@@ -867,30 +868,46 @@ export type ModalWidth = keyof typeof MODAL_WIDTH
  * @param props - Modal configuration
  * @returns Portal-rendered modal component
  */
-function ModalShell({ title, onClose, children, footer, width = "lg" }: {
+function ModalShell({ title, onClose, children, footer, width = "lg", open = true }: {
   title: string
   onClose: () => void
   children: React.ReactNode
   footer?: React.ReactNode
   width?: ModalWidth
+  open?: boolean
 }) {
   return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex glass items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.5)" }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className={`relative w-full ${MODAL_WIDTH[width]} rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[90vh]`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="overflow-y-auto px-6 py-4 flex-1">{children}</div>
-        {footer && <div className="px-6 py-4 border-t border-border shrink-0 flex justify-end gap-2">{footer}</div>}
-      </div>
-    </div>,
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="table-modal-root"
+          className="fixed inset-0 z-50 flex glass items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+        >
+          <motion.div
+            initial={{ scale: 0.95, y: 8 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.95, y: 8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={`relative w-full ${MODAL_WIDTH[width]} rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[90vh]`}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+              <h2 className="text-base font-semibold">{title}</h2>
+              <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto px-6 py-4 flex-1">{children}</div>
+            {footer && <div className="px-6 py-4 border-t border-border shrink-0 flex justify-end gap-2">{footer}</div>}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   )
 }
@@ -2708,40 +2725,55 @@ export function Table<T extends Record<string, any>>({
           }}
         />
       )}
-      {bulkConfirm && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setBulkConfirm(null) }}
-        >
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <h2 className="text-base font-semibold">Confirm Delete</h2>
-              <button onClick={() => setBulkConfirm(null)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-muted-foreground">
-                {bulkConfirm === "selected"
-                  ? `Are you sure you want to delete ${selectedIds.length} selected record${selectedIds.length !== 1 ? "s" : ""}? This action cannot be undone.`
-                  : "Are you sure you want to delete all records? This action cannot be undone."
-                }
-              </p>
-            </div>
-            <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setBulkConfirm(null)} disabled={bulkLoading}>Cancel</Button>
-              <Button variant="danger" size="sm" disabled={bulkLoading} onClick={async () => {
-                if (bulkConfirm === "selected") await execBulkDeleteSelected()
-                else await execDeleteAll()
-                setBulkConfirm(null)
-              }}>
-                {bulkLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-                {bulkLoading ? "Deleting…" : "Delete"}
-              </Button>
-            </div>
-          </div>
-        </div>,
+      {createPortal(
+        <AnimatePresence>
+          {bulkConfirm && (
+            <motion.div
+              key="bulk-confirm-root"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: "rgba(0,0,0,0.5)" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onMouseDown={(e) => { if (e.target === e.currentTarget) setBulkConfirm(null) }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 8 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 8 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl flex flex-col"
+              >
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                  <h2 className="text-base font-semibold">Confirm Delete</h2>
+                  <button onClick={() => setBulkConfirm(null)} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="px-6 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    {bulkConfirm === "selected"
+                      ? `Are you sure you want to delete ${selectedIds.length} selected record${selectedIds.length !== 1 ? "s" : ""}? This action cannot be undone.`
+                      : "Are you sure you want to delete all records? This action cannot be undone."
+                    }
+                  </p>
+                </div>
+                <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setBulkConfirm(null)} disabled={bulkLoading}>Cancel</Button>
+                  <Button variant="danger" size="sm" disabled={bulkLoading} onClick={async () => {
+                    if (bulkConfirm === "selected") await execBulkDeleteSelected()
+                    else await execDeleteAll()
+                    setBulkConfirm(null)
+                  }}>
+                    {bulkLoading && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                    {bulkLoading ? "Deleting…" : "Delete"}
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
     </>

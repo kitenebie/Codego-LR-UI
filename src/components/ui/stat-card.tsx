@@ -1,6 +1,7 @@
 import * as React from "react"
 import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 import { cn } from "@/src/lib/utils"
+import { Animate, type AnimationType } from "./container"
 
 export type StatTrend = "up" | "down" | "neutral"
 
@@ -14,6 +15,8 @@ export interface StatCardProps {
   sparkline?: number[]
   description?: string
   loading?: boolean
+  animationType?: AnimationType
+  animationDelay?: number
   className?: string
 }
 
@@ -56,6 +59,8 @@ export function StatCard({
   sparkline,
   description,
   loading = false,
+  animationType,
+  animationDelay = 0,
   className,
 }: StatCardProps) {
   const autoTrend: StatTrend = trend ?? (change === undefined ? "neutral" : change > 0 ? "up" : change < 0 ? "down" : "neutral")
@@ -73,7 +78,7 @@ export function StatCard({
     )
   }
 
-  return (
+  const inner = (
     <div className={cn("rounded-xl glass p-5 space-y-3", className)}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm text-muted-foreground font-medium">{title}</p>
@@ -101,4 +106,8 @@ export function StatCard({
       </div>
     </div>
   )
+
+  return animationType
+    ? <Animate animationType={animationType} delay={animationDelay}>{inner}</Animate>
+    : inner
 }

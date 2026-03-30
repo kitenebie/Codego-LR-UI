@@ -15,6 +15,7 @@ export interface DateRangePickerProps {
   disabled?: boolean
   minDate?: Date
   maxDate?: Date
+  disabledDates?: string[]
   className?: string
 }
 
@@ -43,6 +44,7 @@ export function DateRangePicker({
   disabled = false,
   minDate,
   maxDate,
+  disabledDates = [],
   className,
 }: DateRangePickerProps) {
   const [internal, setInternal] = React.useState<DateRange>(defaultValue)
@@ -58,6 +60,7 @@ export function DateRangePicker({
   const [dropStyle, setDropStyle] = React.useState<React.CSSProperties>({})
 
   const range = controlled ?? internal
+  const parsedDisabled = React.useMemo(() => disabledDates.map(d => new Date(d)), [disabledDates])
 
   React.useEffect(() => {
     function handler(e: MouseEvent) {
@@ -115,6 +118,7 @@ export function DateRangePicker({
   function isDisabled(d: Date) {
     if (minDate && d < minDate) return true
     if (maxDate && d > maxDate) return true
+    if (parsedDisabled.some(dd => sameDay(d, dd))) return true
     return false
   }
 

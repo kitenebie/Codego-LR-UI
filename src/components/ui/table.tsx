@@ -610,7 +610,7 @@ export function useServerTable<T extends Record<string, any>>(
 export type ActionFieldType =
   | "input" | "password" | "textarea" | "checkbox" | "toggle"
   | "select" | "radio" | "slider" | "tag-input"
-  | "otp" | "combobox" | "color-picker" | "date-range"
+  | "otp" | "combobox" | "color-picker" | "date-range" | "date"
   | "rich-text" | "file-upload" | "repeater"
 
 /**
@@ -678,6 +678,18 @@ export interface ActionField {
   width?: number | string
   /** Height applied to the field value in the View modal (e.g. 80, "5rem") */
   height?: number | string
+  /** Minimum length for text inputs */
+  minLength?: number
+  /** Maximum length for text inputs */
+  maxLength?: number
+  /** Minimum date for date/datetime inputs (ISO string or Date) */
+  minDate?: string | Date
+  /** Maximum date for date/datetime inputs (ISO string or Date) */
+  maxDate?: string | Date
+  /** Disabled dates for date/datetime inputs (array of ISO strings or Dates) */
+  disabledDates?: (string | Date)[]
+  /** Initial checked state for checkbox/toggle */
+  isChecked?: boolean
 }
 
 /**
@@ -945,20 +957,25 @@ function FieldRenderer({ field, value, onChange }: {
   const comboOptions = (field.options ?? []).map(toLabelValue)
   const radioOptions = (field.options ?? []).map(toLabelValue)
 
+  const inputProps = {
+    minLength: field.minLength,
+    maxLength: field.maxLength,
+  }
+
   switch (field.type) {
     case "textarea":
-      return <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} rows={3} />
+      return <Textarea value={value ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} rows={3} minLength={field.minLength} maxLength={field.maxLength} />
 
     case "checkbox":
       return (
         <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox checked={!!value} onChange={(e) => onChange(e.target.checked)} />
+          <Checkbox checked={field.isChecked ?? !!value} onChange={(e) => onChange(e.target.checked)} />
           <span className="text-sm">{field.label}</span>
         </label>
       )
 
     case "toggle":
-      return <ToggleSwitch checked={!!value} onChange={(v) => onChange(v)} label={field.label} />
+      return <ToggleSwitch checked={field.isChecked ?? !!value} onChange={(v) => onChange(v)} label={field.label} />
 
     case "select":
       return (
@@ -1026,6 +1043,21 @@ function FieldRenderer({ field, value, onChange }: {
         <DateRangePicker
           value={value ?? null}
           onChange={(v) => onChange(v)}
+          minDate={field.minDate ? new Date(field.minDate) : undefined}
+          maxDate={field.maxDate ? new Date(field.maxDate) : undefined}
+          disabledDates={field.disabledDates?.map(d => String(d))}
+        />
+      )
+
+    case "date":
+      return (
+        <Input
+          inputType="date"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          min={field.minDate ? String(field.minDate) : undefined}
+          max={field.maxDate ? String(field.maxDate) : undefined}
         />
       )
 
@@ -1075,6 +1107,10 @@ function FieldRenderer({ field, value, onChange }: {
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder ?? field.label}
+          minLength={field.minLength}
+          maxLength={field.maxLength}
+          regexValidation={field.validation instanceof RegExp ? { pattern: field.validation, message: field.validationMessage } : undefined}
+          {...inputProps}
         />
       )
 
@@ -1085,6 +1121,10 @@ function FieldRenderer({ field, value, onChange }: {
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder ?? field.label}
+          minLength={field.minLength}
+          maxLength={field.maxLength}
+          regexValidation={field.validation instanceof RegExp ? { pattern: field.validation, message: field.validationMessage } : undefined}
+          {...inputProps}
         />
       )
   }
@@ -2464,7 +2504,23 @@ export function Table<T extends Record<string, any>>({
                                 {item[col.key]}
                               </a>
                             )
-                          })() : (
+                          })() : col.type === "date" ? (
+                            <span className="text-foreground/90">
+                              {item[col.key]
+                                ? new Date(item[col.key]).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : "—"}
+                            </span>
+                          ) : col.type === "date-range" ? (
+                            <span className="text-foreground/90">
+                              {item[col.key]?.from || item[col.key]?.to
+                                ? `${item[col.key].from ? new Date(item[col.key].from).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}${item[col.key].from && item[col.key].to ? " – " : ""}${item[col.key].to ? new Date(item[col.key].to).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}`
+                                : "—"}
+                            </span>
+                          ) : (
                             <span className="text-foreground/90">{item[col.key]}</span>
                           )}
                         </td>

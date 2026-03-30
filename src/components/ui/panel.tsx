@@ -1,5 +1,5 @@
 import * as React from "react"
-import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Loader2 } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Loader2, Menu, X, ChevronUp } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { Tooltip } from "./tooltip"
 import { useTheme } from "../theme-provider"
@@ -378,6 +378,353 @@ export function PanelSidebarItem({
         {!collapsed && <span className="truncate">{label}</span>}
       </button>
     </Tooltip>
+  )
+}
+
+// ─── Mobile Panel ────────────────────────────────────────────────────────────
+
+export interface MobilePanelProps {
+  /** Bottom tab items for mobile navigation */
+  tabs: { key: string; label: string; icon: React.ElementType }[]
+  /** Currently active tab key */
+  activeTab?: string
+  onTabChange?: (key: string) => void
+  /** Drawer nav items (optional — shown in slide-up drawer) */
+  drawerNav?: React.ReactNode
+  /** Top bar title */
+  title?: React.ReactNode
+  /** Trailing content in the top bar */
+  topbarTrailing?: React.ReactNode
+  showThemeToggle?: boolean
+  children?: React.ReactNode
+  className?: string
+  loading?: boolean
+  error?: string | null
+  emptyState?: React.ReactNode
+  /** "bottom-tabs" = persistent bottom tab bar; "drawer" = hamburger + slide-up drawer */
+  variant?: "bottom-tabs" | "drawer"
+}
+
+export function MobilePanel({
+  tabs,
+  activeTab: controlledTab,
+  onTabChange,
+  drawerNav,
+  title,
+  topbarTrailing,
+  showThemeToggle = false,
+  children,
+  className,
+  loading = false,
+  error = null,
+  emptyState,
+  variant = "bottom-tabs",
+}: MobilePanelProps) {
+  const [internalTab, setInternalTab] = React.useState(tabs[0]?.key ?? "")
+  const [drawerOpen, setDrawerOpen] = React.useState(false)
+
+  const activeTab = controlledTab !== undefined ? controlledTab : internalTab
+
+  const handleTabChange = (key: string) => {
+    if (controlledTab === undefined) setInternalTab(key)
+    onTabChange?.(key)
+    setDrawerOpen(false)
+  }
+
+  const hasContent = React.Children.count(children) > 0
+  const showEmpty = !loading && !hasContent && emptyState
+
+  return (
+    <div
+      className={cn(
+        "relative flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg",
+        "h-[600px] w-full max-w-sm",
+        className
+      )}
+    >
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-[40%] -left-[20%] h-[80%] w-[60%] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute -bottom-[40%] -right-[20%] h-[80%] w-[60%] rounded-full bg-info/10 blur-[120px]" />
+      </div>
+
+      {/* Top bar */}
+      <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 gap-2">
+        <div className="flex items-center gap-2">
+          {variant === "drawer" && (
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+          {title && <span className="text-sm font-semibold">{title}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          {topbarTrailing}
+          {showThemeToggle && <PanelThemeToggle />}
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="relative z-10 flex-1 overflow-y-auto p-4">
+        {error && (
+          <div className="mb-4 rounded-md bg-destructive/50 p-3 text-sm text-destructive">{error}</div>
+        )}
+        {loading && (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {showEmpty && (
+          <div className="flex h-full items-center justify-center text-muted-foreground">{emptyState}</div>
+        )}
+        {!loading && !showEmpty && children}
+      </main>
+
+      {/* Bottom tab bar */}
+      {variant === "bottom-tabs" && (
+        <nav className="relative z-10 flex shrink-0 border-t border-border bg-background">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => handleTabChange(tab.key)}
+                className={cn(
+                  "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{tab.label}</span>
+                {isActive && (
+                  <span className="absolute bottom-0 h-0.5 w-8 rounded-full bg-primary" />
+                )}
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
+      {/* Drawer overlay */}
+      {variant === "drawer" && drawerOpen && (
+        <div
+          className="absolute inset-0 z-20 bg-black/40"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* Slide-up drawer */}
+      {variant === "drawer" && (
+        <div
+          className={cn(
+            "absolute inset-x-0 bottom-0 z-30 flex flex-col rounded-t-2xl border-t border-border bg-background transition-transform duration-300",
+            drawerOpen ? "translate-y-0" : "translate-y-full"
+          )}
+          style={{ maxHeight: "75%" }}
+        >
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <span className="text-sm font-semibold">Menu</span>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ChevronUp className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto py-2">
+            {drawerNav ??
+              tabs.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.key
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => handleTabChange(tab.key)}
+                    className={cn(
+                      "flex w-full items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {tab.label}
+                  </button>
+                )
+              })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Tablet Panel ─────────────────────────────────────────────────────────────
+
+export interface TabletPanelProps {
+  sidebar?: React.ReactNode
+  sidebarBrand?: PanelBrand
+  sidebarProfile?: PanelProfile
+  topbar?: React.ReactNode
+  topbarTrailing?: React.ReactNode
+  showThemeToggle?: boolean
+  children?: React.ReactNode
+  className?: string
+  loading?: boolean
+  error?: string | null
+  emptyState?: React.ReactNode
+  collapsible?: boolean
+  defaultCollapsed?: boolean
+  collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
+}
+
+export function TabletPanel({
+  sidebar,
+  sidebarBrand,
+  sidebarProfile,
+  topbar,
+  topbarTrailing,
+  showThemeToggle = false,
+  children,
+  className,
+  loading = false,
+  error = null,
+  emptyState,
+  collapsible = true,
+  defaultCollapsed = true,
+  collapsed: controlledCollapsed,
+  onCollapsedChange,
+}: TabletPanelProps) {
+  const [internalCollapsed, setInternalCollapsed] = React.useState(defaultCollapsed)
+  const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed
+
+  const handleToggle = () => {
+    const next = !isCollapsed
+    if (controlledCollapsed === undefined) setInternalCollapsed(next)
+    onCollapsedChange?.(next)
+  }
+
+  const hasContent = React.Children.count(children) > 0
+  const showEmpty = !loading && !hasContent && emptyState
+
+  return (
+    <div
+      className={cn(
+        "relative flex overflow-hidden rounded-xl border border-border bg-background shadow-lg",
+        "h-[520px] w-full max-w-2xl",
+        className
+      )}
+    >
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-[40%] -left-[20%] h-[80%] w-[60%] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute -bottom-[40%] -right-[20%] h-[80%] w-[60%] rounded-full bg-info/10 blur-[120px]" />
+      </div>
+
+      {/* Icon-only sidebar (always visible on tablet) */}
+      {sidebar && (
+        <aside
+          className={cn(
+            "relative z-10 flex flex-col shrink-0 border-r border-border transition-all duration-200",
+            isCollapsed ? "w-14" : "w-52"
+          )}
+        >
+          {sidebarBrand && (
+            <div className={cn(
+              "shrink-0 border-b border-border",
+              isCollapsed ? "flex items-center justify-center py-3" : "flex items-center gap-2 px-4 py-3"
+            )}>
+              {isCollapsed ? (
+                sidebarBrand.image
+                  ? <img src={sidebarBrand.image} alt="logo" className="h-7 w-7 rounded-md object-cover" />
+                  : <span>{sidebarBrand.icon}</span>
+              ) : (
+                <>
+                  {sidebarBrand.image
+                    ? <img src={sidebarBrand.image} alt="logo" className="h-7 w-7 rounded-md object-cover shrink-0" />
+                    : sidebarBrand.icon && <span className="shrink-0">{sidebarBrand.icon}</span>}
+                  {sidebarBrand.title && <span className="flex-1 truncate text-sm font-semibold">{sidebarBrand.title}</span>}
+                  {sidebarBrand.trailing && <span className="shrink-0">{sidebarBrand.trailing}</span>}
+                </>
+              )}
+            </div>
+          )}
+
+          <PanelCollapsedContext.Provider value={isCollapsed}>
+            <div className="flex-1 overflow-y-auto py-2">{sidebar}</div>
+          </PanelCollapsedContext.Provider>
+
+          {sidebarProfile && (
+            <div className={cn(
+              "shrink-0 border-t border-border",
+              isCollapsed ? "flex items-center justify-center py-3" : "px-4 py-3"
+            )}>
+              {isCollapsed ? (
+                sidebarProfile.image
+                  ? <img src={sidebarProfile.image} alt="profile" className="h-7 w-7 rounded-full object-cover" />
+                  : <span>{sidebarProfile.icon}</span>
+              ) : (
+                sidebarProfile.content ?? (
+                  <div className="flex items-center gap-2">
+                    {sidebarProfile.image
+                      ? <img src={sidebarProfile.image} alt="profile" className="h-7 w-7 rounded-full object-cover shrink-0" />
+                      : sidebarProfile.icon && <span className="shrink-0">{sidebarProfile.icon}</span>}
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </aside>
+      )}
+
+      {/* Main area */}
+      <div className="relative z-10 flex flex-1 min-w-0 flex-col">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 gap-2">
+          <div className="flex items-center gap-2">
+            {collapsible && sidebar && (
+              <button
+                type="button"
+                onClick={handleToggle}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              </button>
+            )}
+            {topbar && <div className="flex items-center gap-2">{topbar}</div>}
+          </div>
+          <div className="flex items-center gap-2">
+            {topbarTrailing}
+            {showThemeToggle && <PanelThemeToggle />}
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4">
+          {error && (
+            <div className="mb-4 rounded-md bg-destructive/50 p-3 text-sm text-destructive">{error}</div>
+          )}
+          {loading && (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {showEmpty && (
+            <div className="flex h-full items-center justify-center text-muted-foreground">{emptyState}</div>
+          )}
+          {!loading && !showEmpty && children}
+        </main>
+      </div>
+    </div>
   )
 }
 

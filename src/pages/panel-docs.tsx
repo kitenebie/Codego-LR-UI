@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Playground } from "../components/playground"
 import { DocsLayout, Section } from "../components/ui/toc"
-import { Panel, PanelSidebarItem, PanelSidebarGroup } from "../components/ui/panel"
+import { Panel, PanelSidebarItem, PanelSidebarGroup, MobilePanel, TabletPanel } from "../components/ui/panel"
 import { Badge } from "../components/ui/badge"
 import { PropsTable } from "../components/ui/props-table"
 import { PanelSettings } from "../components/ui/PanelSettings"
@@ -27,6 +27,9 @@ const TOC = [
   { id: "nosidebar", label: "No Sidebar" },
   { id: "themetoggle", label: "Theme Toggle" },
   { id: "settingspage", label: "Settings Page" },
+  { id: "mobile-bottom-tabs", label: "Mobile — Bottom Tabs" },
+  { id: "mobile-drawer", label: "Mobile — Drawer" },
+  { id: "tablet", label: "Tablet Panel" },
   { id: "props", label: "Props" },
   { id: "dataformat", label: "Sub-components" },
 ]
@@ -67,6 +70,43 @@ function NavItems({ active, setActive }: { active: string; setActive: (v: string
         />
       ))}
     </>
+  )
+}
+
+const MOBILE_TABS = [
+  { key: "dashboard", label: "Home", icon: LayoutDashboard },
+  { key: "users", label: "Users", icon: Users },
+  { key: "files", label: "Files", icon: FileText },
+  { key: "settings", label: "Settings", icon: Settings },
+]
+
+function MobilePanelDemo({ variant }: { variant: "bottom-tabs" | "drawer" }) {
+  const [active, setActive] = useState("dashboard")
+  return (
+    <MobilePanel
+      variant={variant}
+      title="My App"
+      tabs={MOBILE_TABS}
+      activeTab={active}
+      onTabChange={setActive}
+    >
+      <PageContent active={active} />
+    </MobilePanel>
+  )
+}
+
+function TabletPanelDemo() {
+  const [active, setActive] = useState("dashboard")
+  return (
+    <TabletPanel
+      collapsible
+      defaultCollapsed
+      topbar={<span className="font-semibold text-sm">Dashboard</span>}
+      sidebarBrand={{ icon: <Boxes className="h-5 w-5 text-primary" />, title: "My Project" }}
+      sidebar={<NavItems active={active} setActive={setActive} />}
+    >
+      <PageContent active={active} />
+    </TabletPanel>
   )
 }
 
@@ -482,6 +522,83 @@ const [active, setActive] = useState("settings")
           </div>
         </Playground>
       </Section>
+      <Section id="mobile-bottom-tabs">
+        <Playground
+          title="Mobile Panel — Bottom Tabs"
+          description="A mobile-first panel with a persistent bottom tab bar. Renders at max-w-sm to simulate a phone viewport."
+          code={`import { MobilePanel } from "@juv/codego-react-ui"
+
+<MobilePanel
+  variant="bottom-tabs"
+  title="My App"
+  tabs={[
+    { key: "dashboard", label: "Home", icon: LayoutDashboard },
+    { key: "users",     label: "Users", icon: Users },
+    { key: "files",     label: "Files", icon: FileText },
+    { key: "settings", label: "Settings", icon: Settings },
+  ]}
+  activeTab={active}
+  onTabChange={setActive}
+>
+  <PageContent active={active} />
+</MobilePanel>`}
+        >
+          <div className="flex justify-center w-full">
+            <MobilePanelDemo variant="bottom-tabs" />
+          </div>
+        </Playground>
+      </Section>
+
+      <Section id="mobile-drawer">
+        <Playground
+          title="Mobile Panel — Drawer"
+          description="A mobile panel with a hamburger button that slides up a drawer for navigation."
+          code={`import { MobilePanel } from "@juv/codego-react-ui"
+
+<MobilePanel
+  variant="drawer"
+  title="My App"
+  tabs={[
+    { key: "dashboard", label: "Home", icon: LayoutDashboard },
+    { key: "users",     label: "Users", icon: Users },
+    { key: "files",     label: "Files", icon: FileText },
+    { key: "settings", label: "Settings", icon: Settings },
+  ]}
+  activeTab={active}
+  onTabChange={setActive}
+>
+  <PageContent active={active} />
+</MobilePanel>`}
+        >
+          <div className="flex justify-center w-full">
+            <MobilePanelDemo variant="drawer" />
+          </div>
+        </Playground>
+      </Section>
+
+      <Section id="tablet">
+        <Playground
+          title="Tablet Panel"
+          description="A tablet-optimised panel that defaults to an icon-only collapsed sidebar. Renders at max-w-2xl to simulate a tablet viewport."
+          code={`import { TabletPanel, PanelSidebarItem } from "@juv/codego-react-ui"
+
+<TabletPanel
+  collapsible
+  defaultCollapsed
+  title="My App"
+  topbar={<span className="font-semibold text-sm">Dashboard</span>}
+  sidebarBrand={{ icon: <Boxes className="h-5 w-5 text-primary" />, title: "My Project" }}
+  sidebar={<NavItems active={active} setActive={setActive} />}
+>
+  <PageContent active={active} />
+</TabletPanel>`}
+        >
+          <div className="w-full">
+            <TabletPanelDemo />
+          </div>
+        </Playground>
+      </Section>
+
       <Section id="props"><PropsTable rows={[
         { prop: "sidebar", type: "ReactNode", description: "Sidebar content — typically PanelSidebarItem / PanelSidebarGroup elements." },
         { prop: "sidebarBrand", type: "PanelBrand", description: "Structured brand header. Shows image+title when expanded, image/icon only when collapsed." },

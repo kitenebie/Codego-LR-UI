@@ -1333,6 +1333,12 @@ hardReloadRef.current()`}</pre>
       underlineColor: "#196EBF",
     },
 
+    // Render created_at as a date
+    created_at: { type: "date" },
+
+    // Render date_range as a date range
+    date_range: { type: "date-range" },
+
     // Fully custom render
     score: {
       render: (item) => (
@@ -1351,11 +1357,11 @@ hardReloadRef.current()`}</pre>
       >
         {(() => {
           const [rows, setRows] = React.useState([
-            { id: "1", name: "Alice Johnson",  status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 92, avatar: "https://i.pravatar.cc/150?img=1", website: "https://example.com", product_id: "1001" },
-            { id: "2", name: "Bob Martinez",   status: "Warning",  role: "Editor",  enabled: false, verified: false, score: 54, avatar: "https://i.pravatar.cc/150?img=2", website: "https://example.com", product_id: "1002" },
-            { id: "3", name: "Carol White",    status: "Inactive", role: "Viewer",  enabled: false, verified: true,  score: 30, avatar: "https://i.pravatar.cc/150?img=3", website: "https://example.com", product_id: "1003" },
-            { id: "4", name: "David Kim",      status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 78, avatar: "https://i.pravatar.cc/150?img=4", website: "https://example.com", product_id: "1004" },
-            { id: "5", name: "Eva Chen",       status: "Pending",  role: "Editor",  enabled: true,  verified: false, score: 65, avatar: "https://i.pravatar.cc/150?img=5", website: "https://example.com", product_id: "1005" },
+            { id: "1", name: "Alice Johnson",  status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 92, avatar: "https://i.pravatar.cc/150?img=1", website: "https://example.com", product_id: "1001", created_at: "2023-01-15", date_range: { from: "2023-01-01", to: "2023-01-31" } },
+            { id: "2", name: "Bob Martinez",   status: "Warning",  role: "Editor",  enabled: false, verified: false, score: 54, avatar: "https://i.pravatar.cc/150?img=2", website: "https://example.com", product_id: "1002", created_at: "2023-02-20", date_range: { from: "2023-02-01", to: "2023-02-28" } },
+            { id: "3", name: "Carol White",    status: "Inactive", role: "Viewer",  enabled: false, verified: true,  score: 30, avatar: "https://i.pravatar.cc/150?img=3", website: "https://example.com", product_id: "1003", created_at: "2023-03-10", date_range: { from: "2023-03-01", to: "2023-03-15" } },
+            { id: "4", name: "David Kim",      status: "Active",   role: "Admin",   enabled: true,  verified: true,  score: 78, avatar: "https://i.pravatar.cc/150?img=4", website: "https://example.com", product_id: "1004", created_at: "2023-04-05", date_range: { from: "2023-04-01", to: "2023-04-30" } },
+            { id: "5", name: "Eva Chen",       status: "Pending",  role: "Editor",  enabled: true,  verified: false, score: 65, avatar: "https://i.pravatar.cc/150?img=5", website: "https://example.com", product_id: "1005", created_at: "2023-05-12", date_range: { from: "2023-05-01", to: "2023-05-31" } },
           ])
           const patch = (id: string, key: string, value: any) =>
             setRows((prev) => prev.map((r) => r.id === id ? { ...r, [key]: value } : r))
@@ -1368,6 +1374,8 @@ hardReloadRef.current()`}</pre>
             { key: "verified",   title: "Verified",   type: "checkbox", onChange: (item, v) => patch(item.id, "verified", v) },
             { key: "website",    title: "Website",    type: "text-url", underlineColor: "primary" },
             { key: "product_id", title: "Product ID", type: "text-url", redirect: (item: any) => `https://example.com/products/${item.product_id}`, openNewTab: true, underlineColor: "#196EBF" },
+            { key: "created_at", title: "Created At", type: "date", onChange: (item, v) => patch(item.id, "created_at", v) },
+            { key: "date_range", title: "Date Range", type: "date-range", onChange: (item, v) => patch(item.id, "date_range", v) },
             { key: "score",    title: "Score",    render: (item) => (
               <div className="flex items-center gap-2">
                 <div className="h-1.5 w-24 rounded-full bg-muted overflow-hidden">

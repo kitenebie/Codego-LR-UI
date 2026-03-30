@@ -3,7 +3,7 @@ import { X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/src/lib/utils"
 
-export interface ModalProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
+export interface ModalProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title' | 'onDrag' | 'onDragStart' | 'onDragEnd' | 'onDragEnter' | 'onDragLeave' | 'onDragOver' | 'onDrop' | 'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration'> {
   isOpen: boolean
   onClose?: () => void
   title?: React.ReactNode

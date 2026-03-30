@@ -44,7 +44,7 @@ import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { decryptLaravelPayload } from "../tools/decryptPayload"
 import axios from "axios"
-import { ChevronLeft, ChevronRight, Search, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, X, Eye, Pencil, Trash, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, X, Eye, Pencil, Trash, Loader2, Calendar } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { Button } from "./button"
 import { Checkbox } from "./checkbox"
@@ -1686,6 +1686,14 @@ export interface TableProps<T> {
   className?: string
 }
 
+export interface FilterableColumn {
+  column: string
+  type: 'date' | 'select'
+  dateRange?: boolean
+  options?: { key: any; label: string }[]
+  onChange?: (value: any) => void
+}
+
 // ── ActionBtn helper ────────────────────────────────────────────────────────
 
 /**
@@ -2521,22 +2529,46 @@ export function Table<T extends Record<string, any>>({
                                 {item[col.key]}
                               </a>
                             )
-                          })() : col.type === "date" ? (
-                            <span className="text-foreground/90">
-                              {item[col.key]
-                                ? new Date(item[col.key]).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })
-                                : "—"}
-                            </span>
-                          ) : col.type === "date-range" ? (
-                            <span className="text-foreground/90">
-                              {item[col.key]?.from || item[col.key]?.to
-                                ? `${item[col.key].from ? new Date(item[col.key].from).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}${item[col.key].from && item[col.key].to ? " – " : ""}${item[col.key].to ? new Date(item[col.key].to).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}`
-                                : "—"}
-                            </span>
+                           })(                           ) : col.type === "date" ? (
+                             col.onChange ? (
+                               <Input
+                                 inputType="date"
+                                 suffixIcon={<Calendar size={16} />}
+                                 value={item[col.key] || ""}
+                                 onChange={(e) => col.onChange?.(item, e.target.value)}
+                                 className="h-8"
+                               />
+                             ) : (
+                               <span className="text-foreground/90">
+                                 {item[col.key]
+                                   ? new Date(item[col.key]).toLocaleDateString("en-US", {
+                                       year: "numeric",
+                                       month: "short",
+                                       day: "numeric",
+                                     })
+                                   : "—"}
+                               </span>
+                             )
+                           ) : col.type === "date-range" ? (
+                             col.onChange ? (
+                               <DateRangePicker
+                                 value={{
+                                   from: item[col.key]?.from ? new Date(item[col.key].from) : null,
+                                   to: item[col.key]?.to ? new Date(item[col.key].to) : null,
+                                 }}
+                                 onChange={(range) => col.onChange?.(item, {
+                                   from: range.from?.toISOString().split('T')[0],
+                                   to: range.to?.toISOString().split('T')[0],
+                                 })}
+                                 className="w-full"
+                               />
+                             ) : (
+                               <span className="text-foreground/90">
+                                 {item[col.key]?.from || item[col.key]?.to
+                                   ? `${item[col.key].from ? new Date(item[col.key].from).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}${item[col.key].from && item[col.key].to ? " – " : ""}${item[col.key].to ? new Date(item[col.key].to).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}`
+                                   : "—"}
+                               </span>
+                             )
                           ) : (
                             <span className="text-foreground/90">{item[col.key]}</span>
                           )}

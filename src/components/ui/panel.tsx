@@ -70,7 +70,7 @@ export interface PanelProps {
   tabletBreakpoint?: number
 }
 
-const PanelCollapsedContext = React.createContext(false)
+export const PanelCollapsedContext = React.createContext(false)
 const PanelGroupsContext = React.createContext<{
   expandedGroups: Set<string>
   onGroupToggle: (title: string, expanded: boolean) => void

@@ -122,7 +122,7 @@ function MobilePanelGroupDemo() {
   )
 }
 
-function MobilePanelDemo({ variant }: { variant: string }) {
+function MobilePanelDemo({ variant }: { variant: "bottom-tabs" | "drawer" }) {
   const [active, setActive] = useState("dashboard")
   return (
     <Panel

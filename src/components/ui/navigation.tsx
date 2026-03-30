@@ -1,6 +1,7 @@
 import * as React from "react"
 import { cn } from "@/src/lib/utils"
 import { ChevronDown, ChevronRight } from "lucide-react"
+import { PanelCollapsedContext } from "./panel"
 
 // ─── LeftSidebar ────────────────────────────────────────────────────────────
 
@@ -242,6 +243,9 @@ export function GroupNavigation({
   className,
   collapsed = false,
 }: GroupNavigationProps) {
+  const contextCollapsed = React.useContext(PanelCollapsedContext)
+  const effectiveCollapsed = collapsed || contextCollapsed
+
   const [active, setActive] = React.useState(value ?? groups[0]?.items[0]?.value ?? "")
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
@@ -267,7 +271,7 @@ export function GroupNavigation({
         const isOpen = openGroups[group.label] !== false
         return (
           <div key={group.label} className="py-2">
-            {!collapsed && (
+            {!effectiveCollapsed && (
               <button
                 onClick={() => group.collapsible && toggleGroup(group.label)}
                 className={cn(
@@ -292,10 +296,10 @@ export function GroupNavigation({
                     key={item.value}
                     disabled={item.disabled}
                     onClick={() => handleClick(item)}
-                    title={collapsed ? item.label : undefined}
+                    title={effectiveCollapsed ? item.label : undefined}
                     className={cn(
                       "flex w-full items-center rounded-md text-sm font-medium transition-colors",
-                      collapsed ? "justify-center px-0 py-2 w-10 h-10 mx-auto" : "px-3 py-2",
+                      effectiveCollapsed ? "justify-center px-0 py-2 w-10 h-10 mx-auto" : "px-3 py-2",
                       current === item.value
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-primary/20 hover:text-primary",
@@ -303,10 +307,10 @@ export function GroupNavigation({
                     )}
                   >
                     {item.icon && (
-                      <span className={cn("shrink-0", !collapsed && "mr-3")}>{item.icon}</span>
+                      <span className={cn("shrink-0", !effectiveCollapsed && "mr-3")}>{item.icon}</span>
                     )}
-                    {!collapsed && <span className="flex-1 text-left">{item.label}</span>}
-                    {!collapsed && item.badge && <span className="ml-auto">{item.badge}</span>}
+                    {!effectiveCollapsed && <span className="flex-1 text-left">{item.label}</span>}
+                    {!effectiveCollapsed && item.badge && <span className="ml-auto">{item.badge}</span>}
                   </button>
                 ))}
               </nav>

@@ -1,10 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Playground } from "../components/playground"
 import { DocsLayout, Section } from "../components/ui/toc"
 import { BulletinBoard, BulletinPreview } from "../components/ui/bulletin-board"
 import type { BulletinItem } from "../components/ui/bulletin-board"
 import { PropsTable } from "../components/ui/props-table"
 import { Button } from "../components/ui/button"
+import { api } from "@/src/lib/codego"
+import { decryptResponse } from "@/src/core/decryption/decode"
 import { Plus, Pencil, Trash, Eye } from "lucide-react"
 
 const TOC = [
@@ -16,11 +18,10 @@ const TOC = [
   { id: "actions",    label: "Item Actions" },
   { id: "preview",    label: "Preview Modal" },
   { id: "footer",     label: "Footer Actions" },
-  { id: "server",     label: "useServerBulletin" },
+  { id: "server",     label: "API Data Fetching" },
   { id: "loading",    label: "Loading State" },
   { id: "props",      label: "Props" },
   { id: "dataformat", label: "BulletinItem" },
-  { id: "hookprops",  label: "useServerBulletin Options" },
 ]
 
 const SAMPLE: BulletinItem[] = [
@@ -208,9 +209,7 @@ export function BulletinBoardDocs() {
         <Playground
           title="Preview Modal"
           description="Pass preview to open a full-content modal when a card is clicked. Use editBaseUrl + editFields for built-in edit form, or onEdit for custom handling. Use deleteBaseUrl for built-in delete confirmation."
-          code={`<BulletinBoard\n  items={items}\n  preview\n  onView={(item) => console.log("view", item)}
-  onEdit={(item) => console.log("edit", item)}\n  deleteBaseUrl="/api/bulletins"\n  onDelete={(item) => console.log("deleted", item)}\n/>\n\n{/* Standalone usage */}\n{open && (\n  <BulletinPreview\n    item={selectedItem}\n    onClose={() => setOpen(false)}\n    onView={(item) => handleView(item)}
-    onEdit={(item) => handleEdit(item)}\n    onDelete={(item) => handleDelete(item)}\n  />\n)}`}
+          code={`<BulletinBoard\n  items={items}\n  preview\n  onView={(item) => console.log("view", item)}\n  onEdit={(item) => console.log("edit", item)}\n  deleteBaseUrl="/api/bulletins"\n  onDelete={(item) => console.log("deleted", item)}\n/>\n\n{/* Standalone usage */}\n{open && (\n  <BulletinPreview\n    item={selectedItem}\n    onClose={() => setOpen(false)}\n    onView={(item) => handleView(item)}\n    onEdit={(item) => handleEdit(item)}\n    onDelete={(item) => handleDelete(item)}\n  />\n)}`}
         >
           <div className="space-y-4">
             <BulletinBoard
@@ -248,27 +247,7 @@ export function BulletinBoardDocs() {
         <Playground
           title="Footer Actions"
           description="footerAction renders below the board content (above pagination). headerPreviewAction and footerPreviewAction inject elements into the preview modal header and footer respectively."
-          code={`<BulletinBoard
-  items={items}
-  preview
-  footerAction={
-    <Button size="sm" variant="outline">Load More</Button>
-  }
-  headerPreviewAction={
-    <Badge variant="info">New</Badge>
-  }
-  footerPreviewAction={
-    <Button size="sm" variant="secondary">Share</Button>
-  }
-/>
-
-{/* Or directly on BulletinPreview: */}
-<BulletinPreview
-  item={item}
-  onClose={onClose}
-  headerAction={<Badge variant="info">New</Badge>}
-  footerAction={<Button size="sm" variant="secondary">Share</Button>}
-/>`}
+          code={`<BulletinBoard\n  items={items}\n  preview\n  footerAction={\n    <Button size="sm" variant="outline">Load More</Button>\n  }\n  headerPreviewAction={\n    <Badge variant="info">New</Badge>\n  }\n  footerPreviewAction={\n    (item) => <Button size="sm" variant="secondary" onClick={() => shareItem(item)}>Share</Button>\n  }\n/>\n\n{/* Or directly on BulletinPreview: */}\n<BulletinPreview\n  item={item}\n  onClose={onClose}\n  headerAction={<Badge variant="info">New</Badge>}\n  footerAction={<Button size="sm" variant="secondary">Share</Button>}\n/>`}
         >
           <BulletinBoard
             items={SAMPLE.slice(0, 3)}
@@ -284,7 +263,7 @@ export function BulletinBoardDocs() {
               <span className="text-[10px] font-semibold text-info">New</span>
             }
             footerPreviewAction={
-              <Button size="sm" variant="secondary">Share</Button>
+              (item) => <Button size="sm" variant="secondary" onClick={() => alert(`Share item ${item.id}`)}>Share</Button>
             }
           />
         </Playground>
@@ -292,33 +271,124 @@ export function BulletinBoardDocs() {
 
       <Section id="server">
         <Playground
-          title="useServerBulletin"
-          description="Fetch paginated bulletin posts from a server. The hook returns items, loading, error, and serverPagination — pass serverPagination directly to BulletinBoard."
-          code={`const { items, loading, error, serverPagination, reload } = useServerBulletin({\n  url: "/api/bulletins",\n  // encrypt: true,          // enable if Laravel encrypts the response\n  // key: import.meta.env["VITE_LARAVEL_KEY"],  // or set VITE_LARAVEL_KEY in .env\n  // decryptPayloadLog: true, // log decrypted payload for debugging\n  transform: (row) => ({\n    id: row.id,\n    title: row.subject,\n    body: row.content,\n    author: row.posted_by,\n    date: row.created_at,\n    category: row.department,\n    priority: row.level,\n    pinned: row.is_pinned,\n    tags: row.tags ?? [],\n  }),\n})\n\n// Uses the codego api client — Bearer token auto-attached from localStorage\n<BulletinBoard\n  items={items}\n  loading={loading}\n  serverPagination={serverPagination}\n  preview\n  onEdit={(item) => openEditModal(item)}\n  deleteBaseUrl="/api/bulletins"\n  onDelete={() => reload()}\n  columns={3}\n  searchable\n  filterable\n  headerAction={\n    <Button size="sm" onClick={openCreateModal}>New Post</Button>\n  }\n/>`}
+          title="API Data Fetching"
+          description="Fetch bulletin posts from your API using the api client with optional Laravel encryption support. Use decryptResponse from the decryption module to handle encrypted responses."
+          code={`const [items, setItems] = useState([])
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(false);
+
+const fetchData = async () => {
+    try {
+        const res = await api.get('/bulletin');
+        setLoading(true)
+        console.log("FULL RESPONSE:", res);
+
+        let source;
+
+        // Check if encrypted or not
+        if (res?.data?.data) {
+            // encrypted
+            const decoded = decryptResponse<any>(
+                res.data,
+                import.meta.env["VITE_LARAVEL_KEY"]
+            );
+            source = decoded.data;
+        } else {
+            // normal response
+            source = res.data.data;
+        }
+
+        // transform data
+        const formatted = source.map((row: any) => ({
+            id: row.id,
+            title: row.subject || row.title,
+            body: row.content || row.body,
+            author: row.posted_by || row.author,
+            date: row.created_at || row.date,
+            category: row.department || row.category,
+            priority: row.level || row.priority,
+            pinned: row.is_pinned || row.pinned,
+            tags: row.tags ?? [],
+            image: row.image
+        }));
+
+        setItems(formatted);
+    } catch (error: any) {
+        console.error("ERROR:", error);
+        setError(error.message || "Something went wrong");
+    } finally {
+        setLoading(false);
+    }
+};
+
+useEffect(() => {
+    fetchData();
+}, []);
+
+<BulletinBoard
+    items={items}
+    loading={loading}
+    error={error}
+    preview
+    onEdit={(item) => openEditModal(item)}
+    deleteBaseUrl="/api/bulletins"
+    onDelete={() => fetchData()}
+    columns={3}
+    searchable
+    filterable
+    headerAction={
+        <Button size="sm" onClick={openCreateModal}>New Post</Button>
+    }
+/>`}
         >
           <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground space-y-2">
             <p className="font-semibold text-foreground">Live demo requires a real API endpoint.</p>
-            <p>Wire up <code className="text-xs bg-muted px-1 py-0.5 rounded">useServerBulletin</code> to your backend and pass the returned props to <code className="text-xs bg-muted px-1 py-0.5 rounded">BulletinBoard</code>.</p>
-            <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">{`const { items, loading, serverPagination, reload } = useServerBulletin({
-  url: "/api/bulletins",
-  params: { per_page: 9 },
-  // encrypt: true,
-  // key: import.meta.env["VITE_LARAVEL_KEY"],
-  transform: (row) => ({
-    id: row.id,
-    title: row.subject,
-    body: row.content,
-  }),
-})
+            <p>Wire up the API call to your backend and pass the returned items to BulletinBoard.</p>
+            <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">{`// Using api client + decryptResponse
+const [items, setItems] = useState([])
+const [loading, setLoading] = useState(true)
 
-// Bearer token auto-attached from localStorage via codego api client
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const res = await api.get('/bulletin')
+      
+      // Check if response is encrypted
+      let source;
+      if (res?.data?.data) {
+        const decoded = decryptResponse(
+          res.data,
+          import.meta.env["VITE_LARAVEL_KEY"]
+        )
+        source = decoded.data
+      } else {
+        source = res.data.data
+      }
+      
+      const formatted = source.map((row: any) => ({
+        id: row.id,
+        title: row.subject,
+        body: row.content,
+        author: row.posted_by,
+        date: row.created_at,
+      }))
+      
+      setItems(formatted)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  fetchData()
+}, [])
+
+// Bearer token auto-attached from localStorage
 <BulletinBoard
   items={items}
   loading={loading}
-  serverPagination={serverPagination}
   preview
-  deleteBaseUrl="/api/bulletins"
-  onDelete={() => reload()}
   columns={3}
 />`}</pre>
           </div>
@@ -359,7 +429,7 @@ export function BulletinBoardDocs() {
           { prop: "onItemClick",      type: "(item: BulletinItem) => void", description: "Fired when a post card is clicked (ignored when preview=true)." },
           { prop: "footerAction",          type: "ReactNode", description: "Extra React elements rendered below the board content (above pagination)." },
           { prop: "headerPreviewAction",    type: "ReactNode", description: "Extra React elements rendered in the preview modal header's left area." },
-          { prop: "footerPreviewAction",    type: "ReactNode", description: "Extra React elements rendered in the preview modal footer's action area." },
+          { prop: "footerPreviewAction",    type: "(item: BulletinItem) => ReactNode", description: "Render prop receiving the item; elements rendered in the preview modal footer's action area." },
           { prop: "className",        type: "string",          description: "Additional CSS classes on the outer wrapper." },
         ]} />
       </Section>
@@ -397,24 +467,6 @@ export function BulletinBoardDocs() {
           { prop: "BulletinAction — icon",    type: "ReactNode",        description: "Icon shown beside the label." },
           { prop: "BulletinAction — onClick", type: "(item) => void",   required: true, description: "Click handler receiving the parent BulletinItem." },
           { prop: "BulletinAction — variant", type: '"default" | "danger"', description: "Danger variant renders the label in red." },
-        ]} />
-      </Section>
-
-      <Section id="hookprops">
-        <PropsTable rows={[
-          { prop: "url",               type: "string",   required: true,  description: "API endpoint. Uses the codego api client (Bearer token auto-attached from localStorage). Page param appended automatically: url?page=N." },
-          { prop: "params",            type: "Record<string, string | number>", description: "Extra query params merged on every request." },
-          { prop: "encrypt",           type: "boolean",  description: "Expect a Laravel-encrypted response payload. Supports plain array or paginated { data: [] } shape." },
-          { prop: "key",               type: "string",   description: "Laravel APP_KEY for decryption. Pass import.meta.env[\"VITE_LARAVEL_KEY\"] or set VITE_LARAVEL_KEY in .env." },
-          { prop: "decryptPayloadLog", type: "boolean",  description: "Log the decrypted payload to the console." },
-          { prop: "transform",         type: "(row: any) => BulletinItem", description: "Map a raw API row to a BulletinItem. Use when your API shape differs from BulletinItem." },
-          { prop: "— items",           type: "BulletinItem[]", description: "Returned: fetched and optionally transformed items." },
-          { prop: "— loading",         type: "boolean",  description: "Returned: true while the request is in-flight." },
-          { prop: "— error",           type: "string | null", description: "Returned: error message if the request failed." },
-          { prop: "— pagination",      type: "ServerPagination | null", description: "Returned: raw pagination metadata." },
-          { prop: "— serverPagination",type: "BulletinServerPaginationProp | null", description: "Returned: pass directly as <BulletinBoard serverPagination={...} />." },
-          { prop: "— goToPage",        type: "(page: number) => void", description: "Returned: navigate to a specific page." },
-          { prop: "— reload",          type: "() => void", description: "Returned: re-fetch the current page (e.g. after a delete)." },
         ]} />
       </Section>
     </DocsLayout>

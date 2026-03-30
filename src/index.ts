@@ -19,8 +19,8 @@ export { Breadcrumb } from "@/src/components/ui/breadcrumb"
 export type { BreadcrumbItem, BreadcrumbProps } from "@/src/components/ui/breadcrumb"
 
 // ─── Bulletin Board ──────────────────────────────────────────────────────────
-export { BulletinBoard, BulletinPreview, useServerBulletin } from "@/src/components/ui/bulletin-board"
-export type { BulletinBoardProps, BulletinItem, BulletinAction, BulletinPriority, BulletinLayout, BulletinVariant, BulletinColumns, BulletinPreviewProps, BulletinServerPaginationProp, UseServerBulletinOptions, UseServerBulletinReturn, BulletinEditField } from "@/src/components/ui/bulletin-board"
+export { BulletinBoard, BulletinPreview } from "@/src/components/ui/bulletin-board"
+export type { BulletinBoardProps, BulletinItem, BulletinAction, BulletinPriority, BulletinLayout, BulletinVariant, BulletinColumns, BulletinPreviewProps, BulletinServerPaginationProp, BulletinEditField } from "@/src/components/ui/bulletin-board"
 
 // ─── Button ───────────────────────────────────────────────────────────────────
 export { Button } from "@/src/components/ui/button"

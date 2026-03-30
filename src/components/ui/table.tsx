@@ -260,6 +260,13 @@ export interface ServerTableFilterField {
 export function useServerTable<T extends Record<string, any>>(
   { url, params, encrypt, key, decryptPayloadLog, columnOverrides, debounce = 300, transform, manual = false, refresh: refreshEnabled = false, refreshInterval = 0, hardReload, onSuccess, onError, filter: filterFields, sort: sortKeys }: UseServerTableOptions
 ): UseServerTableReturn<T> {
+  const instanceId = React.useMemo(() => Math.random().toString(36).substring(2, 9), [])
+  const requestCounter = React.useRef(0)
+  
+  const axiosInstance = React.useMemo(() => {
+    const instance = axios.create()
+    return instance
+  }, [])
   const [data, setData]           = React.useState<T[]>([])
   const [columns, setColumns]     = React.useState<Column<T>[]>([])
   const [currentPage, setCurrentPage] = React.useState(1)
@@ -315,18 +322,32 @@ export function useServerTable<T extends Record<string, any>>(
 
   React.useEffect(() => {
     if (manual && tick === 0) return
-    let cancelled = false
+    const requestId = ++requestCounter.current
+    const cancelled = false
     setLoading(true)
     setError(null)
 
-    axios
+    axiosInstance
       .get<ServerTableResponse<T>>(url, {
         params: { ...params, ...activeFilterParams, page: currentPage, search: searchValue },
       })
       .then(({ data: res }) => {
-        if (cancelled) return
-        const payload = encrypt ? decryptLaravelPayload<ServerTableResponse<T>>(res as unknown as string, key) : res
-        if (encrypt && decryptPayloadLog) console.log("[useServerTable] decrypted payload:", payload)
+        if (requestId !== requestCounter.current || cancelled) return
+        let payload: any
+        if (encrypt) {
+          try {
+            payload = decryptLaravelPayload<ServerTableResponse<T>>(res as unknown as string, key)
+            if (decryptPayloadLog) console.log("[useServerTable] decrypted payload:", payload)
+          } catch (err) {
+            console.error("[useServerTable] Decryption failed:", err)
+            console.error("[useServerTable] Raw response:", res)
+            setError("Failed to decrypt response")
+            setLoading(false)
+            return
+          }
+        } else {
+          payload = res
+        }
         const transformed = transform ? transform(payload) : payload.data
         setData(transformed)
         onSuccess?.(transformed)
@@ -365,14 +386,14 @@ export function useServerTable<T extends Record<string, any>>(
         }
       })
       .catch((err) => {
-        if (cancelled) return
+        if (requestId !== requestCounter.current || cancelled) return
         const errorMsg = err?.response?.data?.message ?? err.message ?? "Request failed"
         setError(errorMsg)
         onError?.(new Error(errorMsg))
       })
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .finally(() => { if (requestId === requestCounter.current && !cancelled) setLoading(false) })
 
-    return () => { cancelled = true }
+    return () => { /* no-op cleanup - requestId check handles it */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, currentPage, tick, JSON.stringify(params), JSON.stringify(activeFilterParams), encrypt, decryptPayloadLog, JSON.stringify(columnOverrides), searchValue])
@@ -843,7 +864,7 @@ function ModalShell({ title, onClose, children, footer, width = "lg" }: {
 }) {
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex glass items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.5)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
@@ -1485,7 +1506,7 @@ function DeleteModal<T extends Record<string, any>>({
 export interface Column<T> {
   key: keyof T | string
   title: string
-  type?: "text" | "image" | "badge" | "icon" | "stack" | "select" | "toggle" | "color" | "checkbox" | "text-url"
+  type?: "text" | "image" | "badge" | "icon" | "stack" | "select" | "toggle" | "color" | "checkbox" | "text-url" | "date" | "date-range"
   stackProps?: { limit?: number; stacked?: boolean; shape?: "circle" | "square"; size?: number }
   /** Options for type="select" */
   selectOptions?: string[]
@@ -1594,6 +1615,17 @@ export interface TableProps<T> {
   filterBar?: React.ReactNode
   /** Custom icon for the filter toggle button. When provided, hides the "Filter" text label. */
   filterableIcon?: React.ReactElement
+  /**
+   * Active filters to apply on top of search and filterBar.
+   * Each item has a key (column name) and value (filter value).
+   * When provided, records will only be shown if they match these filter values.
+   */
+  activeFilter?: { key: string; value: string }[]
+  /**
+   * When true, displays the active filters as removable tags below the table toolbar.
+   * Requires activeFilter to be provided.
+   */
+  showActiveFilter?: boolean
   className?: string
 }
 
@@ -1780,6 +1812,8 @@ export function Table<T extends Record<string, any>>({
   columnVisibilityIcon,
   filterBar,
   filterableIcon,
+  activeFilter = [],
+  showActiveFilter = false,
   exportable = false,
   onExport,
   virtualized = false,
@@ -1899,6 +1933,16 @@ export function Table<T extends Record<string, any>>({
         )
       : tableData
 
+    if (activeFilter && activeFilter.length > 0) {
+      d = d.filter((item) => {
+        return activeFilter.every((f) => {
+          const itemValue = String(item[f.key] ?? "").toLowerCase()
+          const filterValue = f.value.toLowerCase()
+          return itemValue === filterValue
+        })
+      })
+    }
+
     if (sortKey && sortDir) {
       d = [...d].sort((a, b) => {
         const av = a[sortKey] ?? ""
@@ -1908,7 +1952,7 @@ export function Table<T extends Record<string, any>>({
       })
     }
     return d
-  }, [tableData, search, sortKey, sortDir])
+  }, [tableData, search, sortKey, sortDir, activeFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
 
@@ -2156,6 +2200,22 @@ export function Table<T extends Record<string, any>>({
       {/* Filter bar */}
       {filterBar && filterBarOpen && (
         <div>{filterBar}</div>
+      )}
+
+      {/* Active filter tags */}
+      {showActiveFilter && activeFilter && activeFilter.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <span className="text-xs text-muted-foreground font-medium">Active filters:</span>
+          {activeFilter.map((f, idx) => (
+            <div
+              key={`${f.key}-${f.value}-${idx}`}
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary border border-primary/20"
+            >
+              <span>{f.key}:</span>
+              <span className="bg-primary/20 px-1.5 py-0.5 rounded-full">{f.value}</span>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Loading overlay */}

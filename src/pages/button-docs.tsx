@@ -203,12 +203,16 @@ export function ButtonDocs() {
 
       <Section id="confirm"><Playground
         title="Confirm Before Click"
-        description="Button that shows a modal confirmation before firing onClick. Customize the title, content, and footer actions."
-        code={`// Default cancel / proceed buttons
+        description="Button that shows a modal confirmation before firing onClick. Use onConfirm / onCancel callbacks for side-effects, customize button labels with confirmButtonLabel / cancelButtonLabel, or provide a fully custom footer with confirmBeforeClickFooterAction. The modal is rendered via a portal so it overlays all elements."
+        code={`// onConfirm / onCancel with custom labels
 <Button
   confirmBeforeClick
   confirmBeforeClickModalTitle="Delete this item?"
   confirmBeforeClickModalContent="This action cannot be undone."
+  confirmButtonLabel="Yes, delete"
+  cancelButtonLabel="No, keep it"
+  onConfirm={() => console.log('Confirmed!')}
+  onCancel={() => console.log('Cancelled')}
   onClick={() => alert('Deleted!')}
   variant="danger"
 >
@@ -226,6 +230,7 @@ export function ButtonDocs() {
       <Button variant="success" onClick={...}>Yes, publish</Button>
     </>
   }
+  onConfirm={() => console.log('Published')}
   onClick={() => alert('Published!')}
 >
   Publish
@@ -236,6 +241,10 @@ export function ButtonDocs() {
             confirmBeforeClick
             confirmBeforeClickModalTitle="Delete this item?"
             confirmBeforeClickModalContent="This action is permanent and cannot be undone. All associated data will be removed."
+            confirmButtonLabel="Yes, delete"
+            cancelButtonLabel="No, keep it"
+            onConfirm={() => console.log('Delete confirmed')}
+            onCancel={() => console.log('Delete cancelled')}
             onClick={() => alert('Deleted!')}
             variant="danger"
           >
@@ -245,6 +254,8 @@ export function ButtonDocs() {
             confirmBeforeClick
             confirmBeforeClickModalTitle="Publish changes?"
             confirmBeforeClickModalContent="Your changes will be visible to all users immediately after publishing."
+            onConfirm={() => console.log('Publish confirmed')}
+            onCancel={() => console.log('Publish cancelled')}
             onClick={() => alert('Published!')}
           >
             Publish
@@ -254,6 +265,7 @@ export function ButtonDocs() {
             confirmBeforeClick
             confirmBeforeClickModalTitle="Leave without saving?"
             confirmBeforeClickModalContent="Any unsaved changes will be lost."
+            onCancel={() => console.log('Stayed on page')}
             confirmBeforeClickFooterAction={
               <div className="flex justify-end gap-2">
                 <Button size="sm" variant="ghost" onClick={() => {}}>Stay</Button>
@@ -507,6 +519,10 @@ export function ButtonDocs() {
   confirmBeforeClick={false}
   confirmBeforeClickModalTitle="Are you sure?"
   confirmBeforeClickModalContent="This action cannot be undone."
+  confirmButtonLabel="Confirm"
+  cancelButtonLabel="Cancel"
+  onConfirm={() => console.log('Confirmed')}
+  onCancel={() => console.log('Cancelled')}
   href="https://example.com"
   target="_blank"
   as="button"
@@ -587,6 +603,10 @@ export function ButtonDocs() {
           confirmBeforeClick={false}
           confirmBeforeClickModalTitle="Are you sure?"
           confirmBeforeClickModalContent="This action cannot be undone."
+          confirmButtonLabel="Confirm"
+          cancelButtonLabel="Cancel"
+          onConfirm={() => console.log('Confirmed')}
+          onCancel={() => console.log('Cancelled')}
           href="https://example.com"
           target="_blank"
           as="button"
@@ -619,6 +639,10 @@ export function ButtonDocs() {
         { prop: "confirmBeforeClickModalTitle",    type: "string",                         description: "Heading text inside the confirmation modal." },
         { prop: "confirmBeforeClickModalContent",  type: "ReactNode",                      description: "Body content inside the confirmation modal." },
         { prop: "confirmBeforeClickFooterAction",  type: "ReactNode",                      description: "Custom footer buttons. Defaults to Cancel / Proceed if omitted." },
+        { prop: "confirmButtonLabel", type: "string",                          default: '"Proceed"', description: "Label for the confirm button in the default modal footer." },
+        { prop: "cancelButtonLabel",  type: "string",                          default: '"Cancel"',  description: "Label for the cancel button in the default modal footer." },
+        { prop: "onConfirm",        type: "() => void",                                             description: "Callback fired when the user clicks Proceed in the confirm modal." },
+        { prop: "onCancel",         type: "() => void",                                             description: "Callback fired when the user clicks Cancel or dismisses the confirm modal." },
         { prop: "href",             type: "string",                                               description: "Render as an anchor tag with this href." },
         { prop: "as",               type: '"button" | "a" | "div"',           default: '"button"', description: "Underlying HTML element." },
         { prop: "onClick",          type: "(e?: MouseEvent) => void",                             description: "Click handler." },

@@ -10,6 +10,7 @@ const TOC = [
   { id: "low-level",       label: "Low-level Helpers" },
   { id: "with-api",        label: "Usage with api client" },
   { id: "laravel-setup",   label: "Laravel Setup" },
+  { id: "examples",        label: "Usage Examples" },
   { id: "props",           label: "API Reference" },
 ]
 
@@ -199,6 +200,245 @@ return response()->json(
             <p>AES-128-CBC and AES-256-CBC (Laravel default). AEAD (GCM) is not supported.</p>
           </div>
         </Playground>
+      </Section>
+
+      {/* Detailed Usage Examples */}
+      <Section id="examples">
+        <h2 className="text-2xl font-bold tracking-tight text-gradient mb-4">Usage Examples</h2>
+
+        <div className="space-y-8">
+          {/* getLaravelSecretKey */}
+          <Playground
+            title="getLaravelSecretKey"
+            description="Resolve the Laravel APP_KEY from the environment. Reads from VITE_LARAVEL_KEY, REACT_APP_LARAVEL_KEY, or window.__LARAVEL_KEY__ in that order."
+            code={`import { getLaravelSecretKey } from "@juv/codego-react-ui"
+
+// Automatically resolves from your environment
+const key = getLaravelSecretKey()
+console.log(key)
+// => "base6:dGhpc19pc19hX3Rlc3Rfa2V5XzEyMzQ1Njc4OQ=="
+
+// Throws if no key is configured
+// Error: "Missing Laravel decryption key.
+//   Set VITE_LARAVEL_KEY in your .env or inject
+//   window.__LARAVEL_KEY__ via Blade."
+
+// Useful when you need the key for other crypto operations
+const key = getLaravelSecretKey()
+const rawBytes = parseLaravelKey(key)
+// Now use rawBytes for custom HMAC or encryption logic`}
+          >
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              Reads from env → returns raw key string → throws if missing
+            </div>
+          </Playground>
+
+          {/* parseLaravelKey */}
+          <Playground
+            title="parseLaravelKey"
+            description='Convert a Laravel APP_KEY string (base64:… or raw UTF-8) into a CryptoJS WordArray of raw bytes.'
+            code={`import { parseLaravelKey } from "@juv/codego-react-ui"
+
+// With base64: prefix (Laravel default)
+const key1 = parseLaravelKey("base64:dGhpc19pc19hX3Rlc3Rfa2V5")
+console.log(key1) // => CryptoJS WordArray (raw bytes)
+
+// Without prefix (raw UTF-8 string)
+const key2 = parseLaravelKey("my_raw_secret_key")
+console.log(key2) // => CryptoJS WordArray (UTF-8 bytes)
+
+// Verify key length (AES-256 expects 32 bytes)
+const key3 = parseLaravelKey("base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
+console.log(key3.sigBytes) // => 32
+
+// Combine with getLaravelSecretKey for full resolution
+const key = parseLaravelKey(getLaravelSecretKey())`}
+          >
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              "base64:…" → Base64.parse · raw string → Utf8.parse
+            </div>
+          </Playground>
+
+          {/* parseLaravelEncryptedPayload */}
+          <Playground
+            title="parseLaravelEncryptedPayload"
+            description="Decode a base64-encoded or raw JSON encrypted payload string into its component parts (iv, value, mac, tag)."
+            code={`import { parseLaravelEncryptedPayload } from "@juv/codego-react-ui"
+import type { LaravelEncryptedPayload } from "@juv/codego-react-ui"
+
+// From a base64-encoded string (most common)
+const payload: LaravelEncryptedPayload =
+  parseLaravelEncryptedPayload("eyJpdiI6ImFiY2QiLCJ2YWx1ZSI6ImVmZ2giLCJtYWMiOiIxMjM0In0=")
+
+console.log(payload.iv)    // => "abcd"  (Base64 IV)
+console.log(payload.value) // => "efgh"  (Base64 ciphertext)
+console.log(payload.mac)   // => "1234"  (HMAC-SHA256 hex)
+console.log(payload.tag)   // => undefined (not AEAD)
+
+// From a raw JSON string
+const rawJson = '{"iv":"YWJjZA==","value":"ZWZnaA==","mac":"abc123"}'
+const payload2 = parseLaravelEncryptedPayload(rawJson)
+
+// Inspect payload to detect AEAD (unsupported)
+if (payload.tag) {
+  console.warn("AEAD cipher detected — use AES-CBC instead")
+}`}
+          >
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              base64 string → decode → JSON.parse →{"{ iv, value, mac, tag? }"}
+            </div>
+          </Playground>
+
+          {/* decryptLaravelPayload */}
+          <Playground
+            title="decryptLaravelPayload"
+            description="Core decryption. Verifies the HMAC-SHA256 MAC to detect tampering, then AES-CBC decrypts and JSON-parses the result."
+            code={`import { decryptLaravelPayload } from "@juv/codego-react-ui"
+
+// Basic usage — key read from environment automatically
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+const users = decryptLaravelPayload<User[]>(encryptedString)
+
+// With explicit key (e.g. multi-tenant)
+const data = decryptLaravelPayload<MyData>(
+  encryptedString,
+  "base64:tenant_specific_key_here"
+)
+
+// Error handling
+try {
+  const result = decryptLaravelPayload<SensitiveData>(payload)
+} catch (err) {
+  if (err.message.includes("Invalid payload MAC")) {
+    console.error("Wrong key or data tampered with")
+  } else if (err.message.includes("AEAD tag")) {
+    console.error("Unsupported cipher — Laravel must use AES-*-CBC")
+  } else if (err.message.includes("empty plaintext")) {
+    console.error("Decryption failed — likely wrong key")
+  }
+}
+
+// Real-world: decrypt server-paginated table response
+const response = await api.get<string>("/api/users?page=1")
+const result = decryptLaravelPayload<{
+  data: User[]
+  total: number
+  current_page: number
+}>(response)
+
+console.log(result.data)       // => User[]
+console.log(result.total)      // => 150
+console.log(result.current_page) // => 1`}
+          >
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              resolve key → parse payload → verify MAC → AES-CBC decrypt → JSON.parse
+            </div>
+          </Playground>
+
+          {/* decryptResponse */}
+          <Playground
+            title="decryptResponse"
+            description="High-level convenience wrapper. Accepts a raw string or { data: string } envelope and delegates to decryptLaravelPayload."
+            code={`import { decryptResponse } from "@juv/codego-react-ui"
+
+// Example 1: Raw encrypted string from fetch
+const res = await fetch("/api/secret-users")
+const encrypted = await res.text()
+const users = decryptResponse<User[]>(encrypted)
+
+// Example 2: JSON envelope { data: "..." }
+const res = await fetch("/api/secret-users")
+const json = await res.json() // { data: "eyJpdiI6..." }
+const users = decryptResponse<User[]>(json)
+
+// Example 3: With the api client
+import { api } from "@juv/codego-react-ui"
+
+const users = decryptResponse<User[]>(
+  await api.get<string>("/secret/users")
+)
+
+// Example 4: Axios interceptor pattern
+import axios from "axios"
+
+const http = axios.create({ baseURL: "/api" })
+http.interceptors.response.use((res) => {
+  if (typeof res.data === "string") {
+    res.data = decryptResponse(res.data)
+  } else if (res.data?.data && typeof res.data.data === "string") {
+    res.data = decryptResponse(res.data)
+  }
+  return res
+})
+
+// Now all responses are auto-decrypted
+const { data: users } = await http.get<User[]>("/secret/users")
+
+// Example 5: Explicit per-tenant key
+const tenantKey = await fetchTenantKey(tenantId)
+const config = decryptResponse<AppConfig>(encrypted, tenantKey)`}
+          >
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              string | {"{ data }"} → extract payload → decryptLaravelPayload → T
+            </div>
+          </Playground>
+
+          {/* LaravelEncryptedPayload */}
+          <Playground
+            title="LaravelEncryptedPayload (type)"
+            description="TypeScript type representing the decoded structure of a Laravel encrypted payload."
+            code={`import type { LaravelEncryptedPayload } from "@juv/codego-react-ui"
+import { parseLaravelEncryptedPayload } from "@juv/codego-react-ui"
+
+// The shape of a parsed Laravel encrypted payload:
+// {
+//   iv:    string   — Base64-encoded initialization vector (16 bytes)
+//   value: string   — Base64-encoded ciphertext
+//   mac:   string   — HMAC-SHA256 hex digest for integrity verification
+//   tag?:  string   — Present only for AEAD ciphers (unsupported)
+// }
+
+// Type-safe payload inspection
+function validatePayload(raw: string): LaravelEncryptedPayload {
+  const payload: LaravelEncryptedPayload =
+    parseLaravelEncryptedPayload(raw)
+
+  if (!payload.iv || !payload.value || !payload.mac) {
+    throw new Error("Invalid Laravel payload: missing required fields")
+  }
+
+  if (payload.tag) {
+    throw new Error(
+      "AEAD cipher detected (tag present). " +
+      "Only AES-CBC payloads are supported."
+    )
+  }
+
+  return payload
+}
+
+// Use in custom decryption flow
+const payload = validatePayload(encryptedString)
+const key = parseLaravelKey(getLaravelSecretKey())
+const expectedMac = CryptoJS.HmacSHA256(
+  payload.iv + payload.value,
+  key
+).toString()
+
+if (expectedMac !== payload.mac) {
+  throw new Error("Integrity check failed")
+}`}
+          >
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              {"{ iv: string, value: string, mac: string, tag?: string }"}
+            </div>
+          </Playground>
+        </div>
       </Section>
 
       {/* API Reference */}

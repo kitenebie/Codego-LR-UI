@@ -1,4 +1,5 @@
 import * as React from "react"
+import * as ReactDOM from "react-dom"
 import { cn } from "@/src/lib/utils"
 
 export interface ButtonProps
@@ -134,6 +135,11 @@ export interface ButtonProps
   confirmBeforeClickModalTitle?: string;
   confirmBeforeClickModalContent?: React.ReactNode;
   confirmBeforeClickFooterAction?: React.ReactNode;
+  confirmButtonLabel?: string;
+  cancelButtonLabel?: string;
+
+  onConfirm?: () => void;
+  onCancel?: () => void;
 
   // =========================
   // 🔗 NAVIGATION
@@ -229,6 +235,10 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
     confirmBeforeClickModalTitle,
     confirmBeforeClickModalContent,
     confirmBeforeClickFooterAction,
+    confirmButtonLabel,
+    cancelButtonLabel,
+    onConfirm,
+    onCancel,
     href,
     target,
     as = "button",
@@ -341,12 +351,14 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
 
     function handleConfirmProceed() {
       setConfirmOpen(false)
+      onConfirm?.()
       onClick?.(pendingEvent.current ?? undefined)
       pendingEvent.current = null
     }
 
     function handleConfirmCancel() {
       setConfirmOpen(false)
+      onCancel?.()
       pendingEvent.current = null
     }
 
@@ -381,9 +393,9 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
     }
 
     // Confirm modal overlay
-    const confirmModal = confirmBeforeClick && confirmOpen ? (
+    const confirmModal = confirmBeforeClick && confirmOpen ? ReactDOM.createPortal(
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
+        className="fixed inset-0 z-[9999] flex items-center justify-center"
         onClick={handleConfirmCancel}
       >
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -407,20 +419,21 @@ const Button = React.forwardRef<HTMLElement, ButtonProps>(
                   onClick={handleConfirmCancel}
                   className="inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
                 >
-                  Cancel
+                  {cancelButtonLabel ?? "Cancel"}
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmProceed}
                   className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors"
                 >
-                  Proceed
+                  {confirmButtonLabel ?? "Proceed"}
                 </button>
               </>
             )}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     ) : null
 
     if (Element === 'a') {

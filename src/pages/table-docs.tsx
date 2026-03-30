@@ -117,7 +117,8 @@ export function TableDocs() {
       { id: "servertablecolumns", label: "Server Table Column Overrides" },
       { id: "servertablefilter",   label: "filter & sort (useServerTable)" },
       { id: "toolbaricons",         label: "columnVisibilityIcon & filterableIcon" },
-      { id: "avatarstack",      label: "Avatar Stack Column" },
+      { id: "activefilter",         label: "activeFilter & showActiveFilter" },
+      { id: "avatarstack",          label: "Avatar Stack Column" },
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
       { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
       { id: "fileuploadform",    label: "File Upload in editForm" },
@@ -1699,6 +1700,103 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
               filterBar={filterBar}
               filterableIcon={<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="11" x2="13" y1="18" y2="18"/></svg>}
             />
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── activeFilter & showActiveFilter ── */}
+      <Section id="activefilter"><Playground
+        title="activeFilter & showActiveFilter"
+        description="Use activeFilter to apply fixed filters that work alongside filterBar. Each filter item has a key (column name) and value. When showActiveFilter is true, the active filters are displayed as tags below the table toolbar. This is useful for pre-filtering data based on external conditions, like showing only pending/paid records."
+        code={`// Example: Show only pending and paid records
+<Table
+  data={data}
+  columns={columns}
+  filterBar={filterBar}
+  activeFilter={[
+    { key: "status", value: "pending" },
+    { key: "status", value: "paid" }
+  ]}
+  showActiveFilter={true}
+/>
+
+// Hide the filter tags (still applies the filters)
+<Table
+  data={data}
+  columns={columns}
+  activeFilter={[
+    { key: "status", value: "pending" }
+  ]}
+  showActiveFilter={false}
+/>
+
+// Combine with search and sort
+<Table
+  data={data}
+  columns={columns}
+  searchable
+  clientPagination
+  activeFilter={[
+    { key: "department", value: "Engineering" }
+  ]}
+  showActiveFilter={true}
+/>`}
+      >
+        {(() => {
+          const [activeFilters, setActiveFilters] = React.useState<{ key: string; value: string }[]>([
+            { key: "status", value: "Active" }
+          ])
+          const [showTags, setShowTags] = React.useState(true)
+          const userColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+          ]
+          return (
+            <div className="space-y-3">
+              <div className="flex gap-2 flex-wrap items-center">
+                <span className="text-xs text-muted-foreground font-medium">Active filters:</span>
+                {(["Active", "Warning", "Inactive", "Pending"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      if (activeFilters.some(f => f.key === "status" && f.value === s)) {
+                        setActiveFilters(prev => prev.filter(f => !(f.key === "status" && f.value === s)))
+                      } else {
+                        setActiveFilters(prev => [...prev, { key: "status", value: s }])
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                      activeFilters.some(f => f.key === "status" && f.value === s)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowTags(!showTags)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                    showTags
+                      ? "bg-info/10 text-info border-info/30"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  showActiveFilter: {String(showTags)}
+                </button>
+              </div>
+              <Table
+                data={USER_DATA}
+                columns={userColumns}
+                searchable
+                clientPagination
+                itemsPerPage={5}
+                activeFilter={activeFilters}
+                showActiveFilter={showTags}
+              />
+            </div>
           )
         })()}
       </Playground></Section>

@@ -89,100 +89,6 @@ export interface BulletinServerPaginationProp {
   goToPage: (page: number) => void
 }
 
-export interface UseServerBulletinOptions {
-  url: string
-  params?: Record<string, string | number>
-  encrypt?: boolean
-  key?: string
-  decryptPayloadLog?: boolean
-  /** Map raw API row → BulletinItem */
-  transform?: (row: any) => BulletinItem
-}
-
-export interface UseServerBulletinReturn {
-  items: BulletinItem[]
-  currentPage: number
-  pagination: ServerPagination | null
-  serverPagination: BulletinServerPaginationProp | null
-  loading: boolean
-  error: string | null
-  goToPage: (page: number) => void
-  reload: () => void
-}
-
-export function useServerBulletin({
-  url, params, encrypt, key, decryptPayloadLog, transform,
-}: UseServerBulletinOptions): UseServerBulletinReturn {
-  const [items, setItems]             = React.useState<BulletinItem[]>([])
-  const [currentPage, setCurrentPage] = React.useState(1)
-  const [pagination, setPagination]   = React.useState<ServerPagination | null>(null)
-  const [loading, setLoading]         = React.useState(false)
-  const [error, setError]             = React.useState<string | null>(null)
-  const [tick, setTick]               = React.useState(0)
-
-  React.useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    api.get(url, { params: { ...params, page: currentPage } })
-      .then((res) => {
-        if (cancelled) return
-        let payload: any
-        try {
-          payload = encrypt ? decryptLaravelPayload<ServerTableResponse<any>>(res as unknown as string, key) : res
-        } catch (decryptErr: any) {
-          console.error("[useServerBulletin] decryption failed:", decryptErr?.message ?? decryptErr)
-          if (!cancelled) setError(decryptErr?.message ?? "Decryption failed")
-          return
-        }
-        if (encrypt && decryptPayloadLog) console.log("[useServerBulletin] decrypted:", payload)
-        const rows: any[] = Array.isArray(payload) ? payload : (payload.data ?? [])
-        setItems(transform ? rows.map(transform) : rows as BulletinItem[])
-        if (!Array.isArray(payload)) {
-          const rawTotal    = (payload as any).total    as number
-          const rawPerPage  = (payload as any).per_page  as number
-          const rawLastPage = (payload as any).last_page as number | undefined
-          const lastPage    = rawLastPage ?? Math.ceil(rawTotal / rawPerPage)
-          const pg: ServerPagination = payload.pagination ?? {
-            first_page_url: (payload as any).first_page_url ?? `${url}?page=1`,
-            last_page_url:  (payload as any).last_page_url  ?? `${url}?page=${lastPage}`,
-            last_page:      lastPage,
-            next_page_url:  (payload as any).next_page_url !== undefined
-              ? (payload as any).next_page_url
-              : currentPage < lastPage ? `${url}?page=${currentPage + 1}` : null,
-            prev_page_url:  (payload as any).prev_page_url !== undefined
-              ? (payload as any).prev_page_url
-              : currentPage > 1 ? `${url}?page=${currentPage - 1}` : null,
-            per_page: rawPerPage,
-            total:    rawTotal,
-            links:    (payload as any).links ?? [],
-          }
-          setPagination(pg)
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setError(err?.message ?? "Request failed")
-      })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, currentPage, tick, JSON.stringify(params), encrypt, decryptPayloadLog])
-
-  return {
-    items,
-    currentPage,
-    pagination,
-    serverPagination: pagination
-      ? { pagination, currentPage, goToPage: (p) => setCurrentPage(p) }
-      : null,
-    loading,
-    error,
-    goToPage: (p) => setCurrentPage(p),
-    reload: () => setTick((t) => t + 1),
-  }
-}
-
 // ── BulletinPreview modal ─────────────────────────────────────────────────────
 
 export interface BulletinPreviewProps {
@@ -204,7 +110,7 @@ export function BulletinPreview({ item, onClose, onEdit, onDelete, onView, custo
   
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex glass items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.55)" }}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
@@ -619,7 +525,7 @@ export interface BulletinBoardProps {
   /** Extra React elements rendered in the preview modal header's left area. */
   headerPreviewAction?: React.ReactNode
   /** Extra React elements rendered in the preview modal footer's action area. */
-  footerPreviewAction?: React.ReactNode
+  footerPreviewAction?: (item: BulletinItem) => React.ReactNode
   /** Additional CSS classes on the outer wrapper. */
   className?: string
 }
@@ -1035,7 +941,7 @@ export function BulletinBoard({
               ? (item) => { onDelete(item) }
               : undefined
           }
-          footerAction={footerPreviewAction}
+          footerAction={footerPreviewAction ? footerPreviewAction(previewItem) : undefined}
           headerAction={headerPreviewAction}
         />
       )}

@@ -44,7 +44,7 @@ import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { decryptLaravelPayload } from "../tools/decryptPayload"
 import axios from "axios"
-import { ChevronLeft, ChevronRight, Search, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, X, Eye, Pencil, Trash, Loader2, Calendar } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search, Trash2, ChevronsUpDown, ChevronUp, ChevronDown, X, Eye, Pencil, Trash, Loader2, Calendar, RotateCcw } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { Button } from "./button"
 import { Checkbox } from "./checkbox"
@@ -487,11 +487,12 @@ export function useServerTable<T extends Record<string, any>>(
         if (f.type === "date" || f.type === "date-time") return (
           <div key={f.key} className="flex flex-col gap-1">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-            <input
-              type={f.type === "date-time" ? "datetime-local" : "date"}
+            <Input
+              inputType={f.type === "date-time" ? "dateTime" : "date"}
+              suffixIcon={<Calendar size={16} />}
               value={value ?? ""}
               onChange={(e) => handleFilterChange(f.key, e.target.value)}
-              className="h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+              className="h-8 w-40"
             />
           </div>
         )
@@ -1683,6 +1684,14 @@ export interface TableProps<T> {
    * Requires activeFilter to be provided.
    */
   showActiveFilter?: boolean
+  /** Array of column keys to hide from the table */
+  hideColumns?: string[]
+  /** Array of column keys that should be sortable */
+  sortableColumns?: string[]
+  /** Array of filterable columns with their configuration */
+  filterableColumns?: FilterableColumn[]
+  /** Custom widths for column headers */
+  columnHeaderWidth?: Record<string, string | number>
   className?: string
 }
 
@@ -1885,6 +1894,10 @@ export function Table<T extends Record<string, any>>({
   draggable = false,
   onRowReorder,
   keyboardNavigation = false,
+  hideColumns = [],
+  sortableColumns = [],
+  filterableColumns = [],
+  columnHeaderWidth,
 }: TableProps<T>) {
   const { toast } = useToast()
   const isControlledSearch = controlledSearch !== undefined
@@ -1904,6 +1917,7 @@ export function Table<T extends Record<string, any>>({
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set())
   const [dragOverId, setDragOverId] = React.useState<string | null>(null)
   const [focusedRowIdx, setFocusedRowIdx] = React.useState<number>(-1)
+  const [filterValues, setFilterValues] = React.useState<Record<string, any>>({})
 
   // ── Default actions modal state ───────────────────────────────────────────────
   const [viewItem,   setViewItem]   = React.useState<T | null>(null)
@@ -1929,11 +1943,20 @@ export function Table<T extends Record<string, any>>({
   const editFields  = defaultActions?.editForm  ?? autoFields
   const viewFields  = defaultActions?.viewForm  ?? autoFields
 
-  // Apply column visibility filter
+  // Process columns: hide, sortable, visibility
+  const processedColumns = React.useMemo(() => {
+    return columns
+      .filter(col => !hideColumns.includes(String(col.key)))
+      .map(col => ({
+        ...col,
+        sortable: sortableColumns.includes(String(col.key)) ? true : col.sortable,
+      }))
+  }, [columns, hideColumns, sortableColumns])
+
   const visibleColumns = React.useMemo(() => {
-    if (!columnVisibility) return columns
-    return columns.filter((col) => columnVisibility[String(col.key)] !== false)
-  }, [columns, columnVisibility])
+    if (!columnVisibility) return processedColumns
+    return processedColumns.filter((col) => columnVisibility[String(col.key)] !== false)
+  }, [processedColumns, columnVisibility])
 
   // Append actions column when defaultActions is set
   const allColumns: Column<T>[] = React.useMemo(() => {
@@ -2008,6 +2031,39 @@ export function Table<T extends Record<string, any>>({
       })
     }
 
+    // Apply filterableColumns filters
+    if (Object.keys(filterValues).length > 0) {
+      d = d.filter((item) => {
+        return filterableColumns.every((filter) => {
+          const filterValue = filterValues[filter.column]
+          if (!filterValue || filterValue === "" || (typeof filterValue === 'object' && !filterValue.from && !filterValue.to)) return true
+          const itemValue = item[filter.column]
+          if (filter.type === 'date') {
+            if (filter.dateRange) {
+              // Date range filter
+              if (!itemValue?.from || !itemValue?.to) return false
+              const itemFrom = new Date(itemValue.from)
+              const itemTo = new Date(itemValue.to)
+              const filterFrom = filterValue.from ? new Date(filterValue.from) : null
+              const filterTo = filterValue.to ? new Date(filterValue.to) : null
+              if (filterFrom && itemTo < filterFrom) return false
+              if (filterTo && itemFrom > filterTo) return false
+              return true
+            } else {
+              // Single date filter
+              if (!itemValue) return false
+              const itemDate = new Date(itemValue).toDateString()
+              const filterDate = new Date(filterValue).toDateString()
+              return itemDate === filterDate
+            }
+          } else if (filter.type === 'select') {
+            return String(itemValue ?? "") === filterValue
+          }
+          return true
+        })
+      })
+    }
+
     if (sortKey && sortDir) {
       d = [...d].sort((a, b) => {
         const av = a[sortKey] ?? ""
@@ -2017,7 +2073,7 @@ export function Table<T extends Record<string, any>>({
       })
     }
     return d
-  }, [tableData, search, sortKey, sortDir, activeFilter])
+  }, [tableData, search, sortKey, sortDir, activeFilter, filterValues, filterableColumns])
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage))
 
@@ -2283,6 +2339,66 @@ export function Table<T extends Record<string, any>>({
         </div>
       )}
 
+      {/* Filterable columns */}
+      {filterableColumns.length > 0 && (
+        <div className="w-full overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="flex items-center gap-4 flex-wrap min-w-max pb-2">
+            {filterableColumns.map((filter) => (
+              <div key={filter.column} className="flex items-center gap-2 min-w-0 shrink-0">
+                <span className="text-sm font-medium capitalize whitespace-nowrap">{filter.column.replace(/_/g, ' ')}:</span>
+                {filter.type === 'date' ? (
+                  filter.dateRange ? (
+                    <DateRangePicker
+                      value={filterValues[filter.column]}
+                      onChange={(value) => {
+                        setFilterValues(prev => ({ ...prev, [filter.column]: value }))
+                        filter.onChange?.(value)
+                      }}
+                      className="w-64 max-w-64 shrink-0"
+                    />
+                  ) : (
+                    <Input
+                      inputType="date"
+                      suffixIcon={<Calendar size={16} />}
+                      value={filterValues[filter.column] || ''}
+                      onChange={(e) => {
+                        setFilterValues(prev => ({ ...prev, [filter.column]: e.target.value }))
+                        filter.onChange?.(e.target.value)
+                      }}
+                      className="w-40 max-w-40 shrink-0"
+                    />
+                  )
+                ) : filter.type === 'select' ? (
+                  <select
+                    value={filterValues[filter.column] || ''}
+                    onChange={(e) => {
+                      setFilterValues(prev => ({ ...prev, [filter.column]: e.target.value }))
+                      filter.onChange?.(e.target.value)
+                    }}
+                    className="h-9 rounded-lg border border-border bg-background/50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-w-32 max-w-40 shrink-0"
+                  >
+                    <option value="">All</option>
+                    {filter.options?.map(opt => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
+                ) : null}
+                <button
+                  onClick={() => {
+                    setFilterValues(prev => ({ ...prev, [filter.column]: filter.type === 'date' && filter.dateRange ? {} : '' }))
+                    filter.onChange?.(filter.type === 'date' && filter.dateRange ? {} : '')
+                  }}
+                  className="text-red-500 hover:text-red-700 transition-colors shrink-0"
+                  title="Reset filter"
+                >
+                  <RotateCcw size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Loading overlay */}
       {loading && (
         <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
@@ -2332,6 +2448,7 @@ export function Table<T extends Record<string, any>>({
                       variant === "glass" && "text-foreground/70",
                       variant === "soft"  && "text-muted-foreground/80",
                     )}
+                    style={columnHeaderWidth?.[String(col.key)] ? { width: columnHeaderWidth[String(col.key)] } : undefined}
                   >
                     <span className="inline-flex items-center">
                       {col.title}
@@ -2536,7 +2653,7 @@ export function Table<T extends Record<string, any>>({
                                  suffixIcon={<Calendar size={16} />}
                                  value={item[col.key] || ""}
                                  onChange={(e) => col.onChange?.(item, e.target.value)}
-                                 className="h-8"
+                                 className="h-8 w-40"
                                />
                              ) : (
                                <span className="text-foreground/90">

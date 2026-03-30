@@ -80,6 +80,8 @@ const USER_DATA = NAMES.map((name, i) => ({
   department: DEPTS[i % DEPTS.length],
   joined: `${MONTHS[i % 12]} ${YEARS[i % YEARS.length]}`,
   status: STATUSES[i % STATUSES.length],
+  created_at: `2023-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+  updated_at: `2024-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
 }))
 
 export function TableDocs() {
@@ -118,6 +120,7 @@ export function TableDocs() {
       { id: "servertablefilter",   label: "filter & sort (useServerTable)" },
       { id: "toolbaricons",         label: "columnVisibilityIcon & filterableIcon" },
       { id: "activefilter",         label: "activeFilter & showActiveFilter" },
+      { id: "columnconfig",         label: "Column Configuration (hideColumns, sortableColumns, filterableColumns)" },
       { id: "avatarstack",          label: "Avatar Stack Column" },
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
       { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
@@ -1353,7 +1356,16 @@ hardReloadRef.current()`}</pre>
   },
 })
 
-<Table data={data} columns={columns} serverPagination={serverPagination} />`}
+<Table
+  data={data}
+  columns={columns}
+  serverPagination={serverPagination}
+  columnHeaderWidth={{
+    status: "120px",
+    role: "150px",
+    created_at: "180px"
+  }}
+/>`}
       >
         {(() => {
           const [rows, setRows] = React.useState([
@@ -1803,6 +1815,115 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
                 itemsPerPage={5}
                 activeFilter={activeFilters}
                 showActiveFilter={showTags}
+              />
+            </div>
+          )
+        })()}
+      </Playground></Section>
+
+      {/* ── Column Configuration ── */}
+      <Section id="columnconfig"><Playground
+        title="Column Configuration (hideColumns, sortableColumns, filterableColumns)"
+        description="Control column visibility, sorting, filtering, and widths with hideColumns, sortableColumns, filterableColumns, and columnHeaderWidth props. hideColumns hides specified columns, sortableColumns enables sorting on specific columns, filterableColumns renders filter inputs above the table for date ranges, single dates, and select dropdowns, and columnHeaderWidth sets custom widths for column headers."
+        code={`<Table
+  data={data}
+  columns={columns}
+  hideColumns={["internal_id", "secret_field"]}
+  sortableColumns={["name", "created_at", "status"]}
+  columnHeaderWidth={{
+    name: "200px",
+    status: 120,
+    created_at: "150px"
+  }}
+  filterableColumns={[
+    {
+      column: 'created_at',
+      type: 'date',
+      dateRange: true,
+      onChange: (value) => console.log('Date range:', value)
+    },
+    {
+      column: 'updated_at',
+      type: 'date',
+      dateRange: false,
+      onChange: (value) => console.log('Date:', value)
+    },
+    {
+      column: 'status',
+      type: 'select',
+      options: [
+        { key: 'active', label: 'Active' },
+        { key: 'inactive', label: 'Inactive' },
+        { key: 'pending', label: 'Pending' }
+      ],
+      onChange: (value) => console.log('Status:', value)
+    }
+  ]}
+  searchable
+  clientPagination
+/>`}
+      >
+        {(() => {
+          const [filterLogs, setFilterLogs] = React.useState<string[]>([])
+          const configColumns: Column<typeof USER_DATA[0]>[] = [
+            { key: "id",         title: "ID",         type: "text",  sortable: true },
+            { key: "name",       title: "User",       render: (item) => <ProfileCell name={item.name} email={item.email} avatar={item.avatar} /> },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            { key: "status",     title: "Status",     type: "badge", sortable: true },
+            { key: "created_at", title: "Created",    type: "date" },
+            { key: "updated_at", title: "Updated",    type: "date" },
+          ]
+          return (
+            <div className="space-y-3 w-full flex flex-grow">
+              {filterLogs.length > 0 && (
+                <div className="p-3 bg-muted rounded-lg text-sm">
+                  <div className="font-medium mb-1">Filter Logs:</div>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {filterLogs.map((log, i) => (
+                      <div key={i} className="text-xs text-muted-foreground font-mono">{log}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Table
+                data={USER_DATA}
+                columns={configColumns}
+                hideColumns={["id"]}
+                sortableColumns={["name", "created_at", "status", "role"]}
+                columnHeaderWidth={{
+                  name: "200px",
+                  status: 120,
+                  created_at: "180px"
+                }}
+                filterableColumns={[
+                  {
+                    column: 'created_at',
+                    type: 'date',
+                    dateRange: true,
+                    onChange: (value) => setFilterLogs(prev => [...prev.slice(-4), `created_at range: ${JSON.stringify(value)}`])
+                  },
+                  {
+                    column: 'updated_at',
+                    type: 'date',
+                    dateRange: false,
+                    onChange: (value) => setFilterLogs(prev => [...prev.slice(-4), `updated_at: ${value}`])
+                  },
+                  {
+                    column: 'status',
+                    type: 'select',
+                    options: [
+                      { key: 'Active', label: 'Active' },
+                      { key: 'Warning', label: 'Warning' },
+                      { key: 'Inactive', label: 'Inactive' },
+                      { key: 'Pending', label: 'Pending' }
+                    ],
+                    onChange: (value) => setFilterLogs(prev => [...prev.slice(-4), `status: ${value}`])
+                  }
+                ]}
+                searchable
+                clientPagination
+                itemsPerPage={6}
               />
             </div>
           )

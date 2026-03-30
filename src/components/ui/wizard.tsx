@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Check, X, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/src/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -575,31 +576,47 @@ export function Wizard({
 
   // ── Modal layout ────────────────────────────────────────────────────────────
   if (layout === "modal") {
-    if (!isOpen) return null
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-          onClick={() => !unchange && onClose?.()}
-        />
-        <div className={cn(
-          "relative z-10 w-full rounded-2xl border border-border bg-background/90 backdrop-blur-xl shadow-2xl overflow-hidden",
-          SIZE_MAP[size],
-          className,
-        )}>
-          {showClose && onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="absolute right-4 top-4 z-10 rounded-sm opacity-60 hover:opacity-100 transition-opacity"
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="wizard-modal-root"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => !unchange && onClose?.()}
+            />
+            <motion.div
+              initial={{ scale: 0.95, y: 8 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className={cn(
+                "relative z-10 w-full rounded-2xl border border-border bg-background/90 backdrop-blur-xl shadow-2xl overflow-hidden",
+                SIZE_MAP[size],
+                className,
+              )}
             >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </button>
-          )}
-          {panel}
-        </div>
-      </div>
+              {showClose && onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="absolute right-4 top-4 z-10 rounded-sm opacity-60 hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </button>
+              )}
+              {panel}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     )
   }
 

@@ -52,12 +52,16 @@ function getAnchorStyle(anchorEl: HTMLElement | null, wide = false): React.CSSPr
   const r = anchorEl.getBoundingClientRect()
   const spaceBelow = window.innerHeight - r.bottom
   const dropH = wide ? 320 : 300
+  const dropW = wide ? 400 : 280
   const placement = spaceBelow < dropH && r.top > spaceBelow ? "top" : "bottom"
+  let left = r.left
+  // Clamp left to keep within screen
+  left = Math.max(8, Math.min(left, window.innerWidth - dropW - 8))
   return {
     position: "fixed",
     top: placement === "bottom" ? r.bottom + 4 : undefined,
     bottom: placement === "top" ? window.innerHeight - r.top + 4 : undefined,
-    left: r.left,
+    left,
     zIndex: 9999,
   }
 }

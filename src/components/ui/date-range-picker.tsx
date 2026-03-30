@@ -80,11 +80,14 @@ export function DateRangePicker({
   function openPicker() {
     if (triggerRef.current) {
       const pos = getPortalPosition(triggerRef.current, 340)
+      let left = pos.left
+      // Clamp left to keep within screen
+      left = Math.max(8, Math.min(left, window.innerWidth - 340 - 8))
       setDropStyle({
         position: "fixed",
         top: pos.placement === "bottom" ? pos.top : undefined,
         bottom: pos.placement === "top" ? window.innerHeight - pos.top : undefined,
-        left: pos.left,
+        left,
         zIndex: 9999,
       })
     }

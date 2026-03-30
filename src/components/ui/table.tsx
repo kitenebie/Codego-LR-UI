@@ -64,6 +64,7 @@ import { Repeater, RepeaterField, RepeaterPayloadItem } from "./repeater"
 import { Textarea } from "./textarea"
 import { useToast, NotificationBanner, ToastPosition, ToastVariant } from "./notification"
 import { Input } from "./input"
+import { Modal } from "./modal"
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Server-Side Pagination Types
@@ -1572,6 +1573,14 @@ export interface Column<T> {
   sortable?: boolean
   /** Called when a cell value changes (select, toggle, color, checkbox) */
   onChange?: (item: T, value: any) => void
+  /** Show confirmation modal before applying changes */
+  confirmation?: boolean
+  confirmModalTitle?: string
+  confirmModalContent?: string
+  confirmModalCancelText?: string
+  confirmModalSubmitText?: string
+  /** Called after confirmation to apply the change */
+  onSubmitAction?: (item: T, value: any) => void
   /** Column width in px or CSS string */
   width?: number | string
   /** Text alignment: left, center, right */
@@ -1924,6 +1933,11 @@ export function Table<T extends Record<string, any>>({
   const [editItem,   setEditItem]   = React.useState<T | null>(null)
   const [deleteItem, setDeleteItem] = React.useState<T | null>(null)
   const [tableData,  setTableData]  = React.useState<T[]>(data ?? [])
+
+  // Confirmation modal state
+  const [confirmItem, setConfirmItem] = React.useState<T | null>(null)
+  const [confirmValue, setConfirmValue] = React.useState<any>(null)
+  const [confirmCol, setConfirmCol] = React.useState<Column<T> | null>(null)
 
   // Keep tableData in sync when data prop changes
   React.useEffect(() => { setTableData(data ?? []) }, [data])
@@ -2583,46 +2597,79 @@ export function Table<T extends Record<string, any>>({
                             <AvatarStack images={Array.isArray(item[col.key]) ? item[col.key] : []} {...(col.stackProps ?? {})} />
                           ) : col.type === "icon" ? (
                             <span className="flex items-center">{item[col.key]}</span>
-                          ) : col.type === "select" ? (
-                            <select
-                              value={item[col.key]}
-                              onChange={(e) => col.onChange?.(item, e.target.value)}
-                              className="h-8 rounded-lg border border-border bg-background/50 px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
-                            >
-                              {(col.selectOptions ?? []).map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          ) : col.type === "toggle" ? (
-                            <button
-                              role="switch"
-                              aria-checked={!!item[col.key]}
-                              onClick={() => col.onChange?.(item, !item[col.key])}
-                              className={cn(
-                                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                                item[col.key] ? "bg-primary" : "bg-muted"
-                              )}
-                            >
-                              <span className={cn(
-                                "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                                item[col.key] ? "translate-x-4" : "translate-x-0"
-                              )} />
-                            </button>
-                          ) : col.type === "color" ? (
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="color"
-                                value={item[col.key] || "#000000"}
-                                onChange={(e) => col.onChange?.(item, e.target.value)}
-                                className="h-7 w-7 cursor-pointer rounded border border-border bg-transparent p-0.5"
-                              />
-                              <span className="text-xs text-muted-foreground font-mono">{item[col.key]}</span>
-                            </div>
-                          ) : col.type === "checkbox" ? (
-                            <Checkbox
-                              checked={!!item[col.key]}
-                              onChange={(e) => col.onChange?.(item, e.target.checked)}
-                            />
+                           ) : col.type === "select" ? (
+                             <select
+                               value={item[col.key]}
+                               onChange={(e) => {
+                                 if (col.confirmation) {
+                                   setConfirmItem(item)
+                                   setConfirmValue(e.target.value)
+                                   setConfirmCol(col)
+                                 } else {
+                                   col.onChange?.(item, e.target.value)
+                                 }
+                               }}
+                               className="h-8 rounded-lg border border-border bg-background/50 px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                             >
+                               {(col.selectOptions ?? []).map((opt) => (
+                                 <option key={opt} value={opt}>{opt}</option>
+                               ))}
+                             </select>
+                           ) : col.type === "toggle" ? (
+                             <button
+                               role="switch"
+                               aria-checked={!!item[col.key]}
+                               onClick={() => {
+                                 const newValue = !item[col.key]
+                                 if (col.confirmation) {
+                                   setConfirmItem(item)
+                                   setConfirmValue(newValue)
+                                   setConfirmCol(col)
+                                 } else {
+                                   col.onChange?.(item, newValue)
+                                 }
+                               }}
+                               className={cn(
+                                 "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                                 item[col.key] ? "bg-primary" : "bg-muted"
+                               )}
+                             >
+                               <span className={cn(
+                                 "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                                 item[col.key] ? "translate-x-4" : "translate-x-0"
+                               )} />
+                             </button>
+                           ) : col.type === "color" ? (
+                             <div className="flex items-center gap-2">
+                               <input
+                                 type="color"
+                                 value={item[col.key] || "#000000"}
+                                 onChange={(e) => {
+                                   if (col.confirmation) {
+                                     setConfirmItem(item)
+                                     setConfirmValue(e.target.value)
+                                     setConfirmCol(col)
+                                   } else {
+                                     col.onChange?.(item, e.target.value)
+                                   }
+                                 }}
+                                 className="h-7 w-7 cursor-pointer rounded border border-border bg-transparent p-0.5"
+                               />
+                               <span className="text-xs text-muted-foreground font-mono">{item[col.key]}</span>
+                             </div>
+                           ) : col.type === "checkbox" ? (
+                             <Checkbox
+                               checked={!!item[col.key]}
+                               onChange={(e) => {
+                                 if (col.confirmation) {
+                                   setConfirmItem(item)
+                                   setConfirmValue(e.target.checked)
+                                   setConfirmCol(col)
+                                 } else {
+                                   col.onChange?.(item, e.target.checked)
+                                 }
+                               }}
+                             />
                           ) : col.type === "text-url" ? (() => {
                             const href = col.redirect
                               ? (typeof col.redirect === "function" ? col.redirect(item) : col.redirect)
@@ -2925,6 +2972,50 @@ export function Table<T extends Record<string, any>>({
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Confirmation Modal */}
+      <Modal
+        isOpen={!!confirmItem}
+        onClose={() => {
+          setConfirmItem(null)
+          setConfirmValue(null)
+          setConfirmCol(null)
+        }}
+        title={confirmCol?.confirmModalTitle || "Confirm Change"}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {confirmCol?.confirmModalContent || "Are you sure you want to apply this change?"}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setConfirmItem(null)
+                setConfirmValue(null)
+                setConfirmCol(null)
+              }}
+            >
+              {confirmCol?.confirmModalCancelText || "Cancel"}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (confirmCol?.onSubmitAction && confirmItem) {
+                  confirmCol.onSubmitAction(confirmItem, confirmValue)
+                }
+                setConfirmItem(null)
+                setConfirmValue(null)
+                setConfirmCol(null)
+              }}
+            >
+              {confirmCol?.confirmModalSubmitText || "Continue"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 }

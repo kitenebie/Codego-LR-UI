@@ -120,7 +120,7 @@ export function TableDocs() {
       { id: "servertablefilter",   label: "filter & sort (useServerTable)" },
       { id: "toolbaricons",         label: "columnVisibilityIcon & filterableIcon" },
       { id: "activefilter",         label: "activeFilter & showActiveFilter" },
-      { id: "columnconfig",         label: "Column Configuration (hideColumns, sortableColumns, filterableColumns)" },
+      { id: "columnconfig",         label: "Column Configuration (hideColumns, sortableColumns, filterableColumns, confirmation)" },
       { id: "avatarstack",          label: "Avatar Stack Column" },
       { id: "celltypes",        label: "Select / Toggle / Color / Checkbox" },
       { id: "bulkactions",       label: "Bulk Actions & bulkDeleteBaseUrl" },
@@ -165,9 +165,21 @@ export function TableDocs() {
         description="A user directory table with profile avatars, roles, departments, and status badges."
         code={`const columns = [
   { key: "name", title: "User", render: (item) => <ProfileCell {...item} /> },
-  { key: "role",       title: "Role",       type: "text",  sortable: true },
-  { key: "department", title: "Department", type: "text",  sortable: true },
-  { key: "status",     title: "Status",     type: "badge", sortable: true },
+            { key: "role",       title: "Role",       type: "text",  sortable: true },
+            { key: "department", title: "Department", type: "text",  sortable: true },
+            {
+              key: "status",
+              title: "Status",
+              type: "select",
+              selectOptions: ["Active", "Warning", "Inactive", "Pending"],
+              sortable: true,
+              confirmation: true,
+              confirmModalTitle: "Confirm Status Change",
+              confirmModalContent: "Are you sure you want to change the status? This action may affect other systems.",
+              confirmModalCancelText: "Cancel",
+              confirmModalSubmitText: "Change Status",
+              onSubmitAction: (item, value) => console.log('Status changed for', item.name, 'to', value)
+            },
 ]
 
 <Table data={users} columns={columns} searchable clientPagination itemsPerPage={5} selectable />`}
@@ -1823,8 +1835,8 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
 
       {/* ── Column Configuration ── */}
       <Section id="columnconfig"><Playground
-        title="Column Configuration (hideColumns, sortableColumns, filterableColumns)"
-        description="Control column visibility, sorting, filtering, and widths with hideColumns, sortableColumns, filterableColumns, and columnHeaderWidth props. hideColumns hides specified columns, sortableColumns enables sorting on specific columns, filterableColumns renders filter inputs above the table for date ranges, single dates, and select dropdowns, and columnHeaderWidth sets custom widths for column headers."
+        title="Column Configuration (hideColumns, sortableColumns, filterableColumns, confirmation)"
+        description="Control column visibility, sorting, filtering, widths, and confirmation with hideColumns, sortableColumns, filterableColumns, columnHeaderWidth, and confirmation props. hideColumns hides specified columns, sortableColumns enables sorting on specific columns, filterableColumns renders filter inputs above the table for date ranges, single dates, and select dropdowns, columnHeaderWidth sets custom widths for column headers, and confirmation shows a modal for change confirmation."
         code={`<Table
   data={data}
   columns={columns}
@@ -1852,9 +1864,10 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
       column: 'status',
       type: 'select',
       options: [
-        { key: 'active', label: 'Active' },
-        { key: 'inactive', label: 'Inactive' },
-        { key: 'pending', label: 'Pending' }
+        { key: 'Active', label: 'Active' },
+        { key: 'Warning', label: 'Warning' },
+        { key: 'Inactive', label: 'Inactive' },
+        { key: 'Pending', label: 'Pending' }
       ],
       onChange: (value) => console.log('Status:', value)
     }

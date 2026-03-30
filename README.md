@@ -2,9 +2,8 @@
 
 A collection of reusable React UI components built with Tailwind CSS, Motion, and Lucide icons.
 
-**Author:** Kenneth Gimpao  
+**Author:** Codego https://avatars.githubusercontent.com/u/101083976?v=4&size=64
 **License:** MIT  
-**Version:** 1.0.0
 
 ---
 

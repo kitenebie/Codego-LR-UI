@@ -150,7 +150,7 @@ export type { PaginationProps } from "@/src/components/ui/pagination"
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
 export { Panel, PanelSidebarItem, PanelSidebarGroup } from "@/src/components/ui/panel"
-export type { PanelProps } from "@/src/components/ui/panel"
+export type { PanelProps, PanelBrand, PanelProfile, MobileTab, PanelGlobalSearchProps, GlobalSearchRecord } from "@/src/components/ui/panel"
 
 // ─── Popover ──────────────────────────────────────────────────────────────────
 export { Popover } from "@/src/components/ui/popover"

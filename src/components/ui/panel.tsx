@@ -1,8 +1,11 @@
 import * as React from "react"
-import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Loader2, Menu, ChevronDown, ChevronRight } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Loader2, Menu, ChevronDown, ChevronRight, Search } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { Tooltip } from "./tooltip"
 import { useTheme } from "../theme-provider"
+import { GlobalSearchInput } from "./global-search-input"
+import { GlobalSearchModal } from "./global-search-modal"
+import { useNavigate } from "react-router-dom"
 
 export interface PanelBrand {
   image?: string
@@ -23,7 +26,33 @@ export interface MobileTab {
   icon: React.ElementType
 }
 
-export interface PanelProps {
+export interface GlobalSearchRecord {
+  objectID: string
+  name: string
+  description?: string
+  path?: string
+  brand?: string
+  [key: string]: any
+}
+
+export interface PanelGlobalSearchProps {
+  /** Enable global search across resource records */
+  allowGlobalSearch?: boolean
+  /** Search records for local search */
+  globalSearchRecords?: GlobalSearchRecord[]
+  /** The attribute used as the display title in search results */
+  recordTitleAttribute?: string
+  /** The attribute used as the description in search results */
+  globalSearchDescriptionAttribute?: string
+  /** Max hits per page. Default 8 */
+  globalSearchResultsLimit?: number
+  /** Where to render the search box. Default "top-bar" */
+  globalSearchPosition?: "top-bar" | "side-bar"
+  /** Called when a result is selected */
+  onGlobalSearchSelect?: (record: GlobalSearchRecord) => void
+}
+
+export interface PanelProps extends PanelGlobalSearchProps {
   sidebar?: React.ReactNode
   sidebarBrand?: PanelBrand
   sidebarProfile?: PanelProfile
@@ -68,6 +97,76 @@ export interface PanelProps {
   mobileBreakpoint?: number
   /** px breakpoint below which tablet layout activates. Default 1024 */
   tabletBreakpoint?: number
+}
+
+// ─── Global Search ────────────────────────────────────────────────────────────
+function GlobalSearchPanel({
+  searchRecords = [],
+  recordTitleAttribute = "name",
+  globalSearchDescriptionAttribute = "description",
+  globalSearchResultsLimit = 8,
+  onGlobalSearchSelect,
+  compact = false,
+}: {
+  searchRecords?: GlobalSearchRecord[]
+  recordTitleAttribute?: string
+  globalSearchDescriptionAttribute?: string
+  globalSearchResultsLimit?: number
+  onGlobalSearchSelect?: (record: GlobalSearchRecord) => void
+  compact?: boolean
+}) {
+  const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const navigate = useNavigate()
+
+  function handleSelect(record: GlobalSearchRecord) {
+    onGlobalSearchSelect?.(record)
+    if (record.path) {
+      // Handle section links with anchors
+      if (record.path.includes('#')) {
+        const [path, hash] = record.path.split('#')
+        navigate(path)
+        // Scroll to section after navigation
+        setTimeout(() => {
+          const element = document.getElementById(hash)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 100)
+      } else {
+        navigate(record.path)
+      }
+    }
+    setIsModalOpen(false)
+  }
+
+  function handleInputFocus() {
+    setIsModalOpen(true)
+  }
+
+  return (
+    <>
+      <div className={cn("w-64", compact && "w-100")}>
+        <GlobalSearchInput
+          value=""
+          onChange={() => {}}
+          onFocus={handleInputFocus}
+          showClearButton={false}
+          className="w-full cursor-pointer"
+          placeholder="Search records…"
+        />
+      </div>
+
+      <GlobalSearchModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        searchRecords={searchRecords}
+        recordTitleAttribute={recordTitleAttribute}
+        globalSearchDescriptionAttribute={globalSearchDescriptionAttribute}
+        globalSearchResultsLimit={globalSearchResultsLimit}
+        onGlobalSearchSelect={handleSelect}
+      />
+    </>
+  )
 }
 
 export const PanelCollapsedContext = React.createContext(false)
@@ -130,6 +229,13 @@ export function Panel({
   onMobileTabChange,
   mobileBreakpoint = 640,
   tabletBreakpoint = 1024,
+  allowGlobalSearch = false,
+  globalSearchRecords = [],
+  recordTitleAttribute = "name",
+  globalSearchDescriptionAttribute = "description",
+  globalSearchResultsLimit = 8,
+  globalSearchPosition = "top-bar",
+  onGlobalSearchSelect,
 }: PanelProps) {
   const [internalCollapsed, setInternalCollapsed] = React.useState(defaultCollapsed)
   const [internalPage, setInternalPage] = React.useState(defaultPage || "")
@@ -212,6 +318,18 @@ export function Panel({
 
   const isMobile = screenSize === "mobile"
   const isTablet = screenSize === "tablet"
+
+  // ─── Global search helper ────────────────────────────────────────────────────────────
+  const searchBox = allowGlobalSearch ? (
+    <GlobalSearchPanel
+      searchRecords={globalSearchRecords}
+      recordTitleAttribute={recordTitleAttribute}
+      globalSearchDescriptionAttribute={globalSearchDescriptionAttribute}
+      globalSearchResultsLimit={globalSearchResultsLimit}
+      onGlobalSearchSelect={onGlobalSearchSelect}
+      compact={globalSearchPosition === "side-bar"}
+    />
+  ) : null
 
   // ─── Sidebar brand/profile helpers ───────────────────────────────────────
   function renderBrand(collapsed: boolean) {
@@ -301,7 +419,7 @@ export function Panel({
         </div>
 
         {/* Topbar */}
-        <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 gap-2">
+        <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-border px-4 gap-2 overflow-visible">
           <div className="flex items-center gap-2">
             {mobileVariant === "drawer" && mobileTabs && (
               <button
@@ -314,6 +432,7 @@ export function Panel({
               </button>
             )}
             {topbar && <div className="flex items-center gap-2">{topbar}</div>}
+            {globalSearchPosition === "top-bar" && searchBox}
           </div>
           <div className="flex items-center gap-2">
             {topbarTrailing}
@@ -448,12 +567,15 @@ export function Panel({
               style={{ transitionDuration: `${animationDuration}ms`, transitionTimingFunction: animationEasing }}
             >
               {renderBrand(tabletSidebarCollapsed)}
+              {globalSearchPosition === "side-bar" && !tabletSidebarCollapsed && (
+                <div className="px-2 py-2 border-b border-border">{searchBox}</div>
+              )}
               <div className="flex-1 overflow-y-auto py-2">{sidebar}</div>
               {renderProfile(tabletSidebarCollapsed)}
             </aside>
 
             <div className="relative z-10 flex flex-1 min-w-0 flex-col">
-              <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 gap-2">
+              <header className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4 gap-2 overflow-visible">
                 <div className="flex items-center gap-2">
                   {collapsible && (
                     <Tooltip content={tabletSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} side="bottom">
@@ -470,6 +592,7 @@ export function Panel({
                     </Tooltip>
                   )}
                   {topbar && <div className="flex items-center gap-2">{topbar}</div>}
+                  {globalSearchPosition === "top-bar" && searchBox}
                 </div>
                 <div className="flex items-center gap-2">
                   {topbarTrailing}
@@ -520,13 +643,16 @@ export function Panel({
               style={{ transitionDuration: `${animationDuration}ms`, transitionTimingFunction: animationEasing }}
             >
               {renderBrand(effectiveCollapsed)}
+              {globalSearchPosition === "side-bar" && !effectiveCollapsed && (
+                <div className="px-2 py-2 border-b border-border">{searchBox}</div>
+              )}
               <div className="flex-1 overflow-y-auto py-2">{sidebar}</div>
               {renderProfile(effectiveCollapsed)}
             </aside>
           )}
 
           <div className="relative z-10 flex flex-1 min-w-0 flex-col">
-            <header className="flex h-14 shrink-0 items-center justify-between border-b border-b-slate-300/50 px-4 gap-2">
+            <header className="flex h-14 shrink-0 items-center justify-between border-b border-b-slate-300/50 px-4 gap-2 overflow-visible">
               <div className="flex items-center gap-2">
                 {collapsible && sidebar && (
                   <Tooltip
@@ -546,6 +672,7 @@ export function Panel({
                   </Tooltip>
                 )}
                 {topbar && <div className="flex items-center gap-2">{topbar}</div>}
+                {globalSearchPosition === "top-bar" && searchBox}
               </div>
               <div className="flex items-center gap-2">
                 {topbarTrailing}

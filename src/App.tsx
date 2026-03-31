@@ -1,5 +1,6 @@
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom"
-import { Layout, SidebarGroup, useSidebarCollapsed } from "./components/layout/layout"
+import { Layout, SidebarGroup, useSidebarCollapsed, type GlobalSearchRecord } from "./components/layout/layout"
+
 import { ThemeProvider } from "./components/theme-provider"
 import { TocProvider, TableOfContents, useToc } from "./components/ui/toc"
 import { Tooltip } from "./components/ui/tooltip"
@@ -40,6 +41,7 @@ import {
   Globe2Icon,
   RouteIcon,
   Database,
+  Search,
 } from "lucide-react"
 import { cn } from "./lib/utils"
 
@@ -104,6 +106,7 @@ import { AuthenticationDocs } from "./pages/authentication-docs"
 import { APIDocs } from "./pages/API-doc"
 import { StorageStoreDocs } from "./pages/storage-docs"
 import { DecryptionDocs } from "./pages/decryption-docs"
+import { ModalGlobalSearchDocs } from "./pages/modal-global-search-docs"
 
 const ROUTE_LABELS: Record<string, string> = {
   "/bulletin-board":        "Bulletin Board",
@@ -134,7 +137,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/Map":          "Flat Map",
   "/Globe":         "Globe Map",
   "/calendar":              "Calendar",
-  "/data-grid":             "Data Grid",
   "/kanban":                "Kanban Board",
   "/drawer":                "Drawer / Sheet",
   "/popover":               "Popover",
@@ -167,7 +169,389 @@ const ROUTE_LABELS: Record<string, string> = {
   "/api":              "api",
   "/storage":              "storage",
   "/decryption":           "Decryption",
+  "/modal-global-search":  "Modal Global Search",
 }
+
+// Content registry for comprehensive search
+const PAGE_CONTENT_REGISTRY = {
+  "/buttons": {
+    sections: [
+      { id: "variants", label: "Button Variants", description: "Primary, secondary, outline, ghost, link, danger, success styles" },
+      { id: "sizes", label: "Button Sizes", description: "Small, medium, large, extra large sizing options" },
+      { id: "rounded", label: "Rounded Buttons", description: "Rounded corner variants and customization" },
+      { id: "fullwidth", label: "Full Width", description: "Full width button layouts" },
+      { id: "colors", label: "Custom Colors", description: "Custom color schemes and theming" },
+      { id: "typography", label: "Typography", description: "Font styles, weights, and text customization" },
+      { id: "shadows", label: "Shadows", description: "Box shadows and elevation effects" },
+      { id: "loading", label: "Loading State", description: "Loading spinners and disabled states" },
+      { id: "icons", label: "Icons", description: "Icon integration and positioning" },
+      { id: "states", label: "States", description: "Hover, focus, active, disabled states" },
+      { id: "animations", label: "Animations", description: "CSS animations and transitions" },
+    ]
+  },
+  "/inputs": {
+    sections: [
+      { id: "label", label: "Label", description: "Input labels and form association" },
+      { id: "placeholder", label: "Placeholder", description: "Placeholder text and styling" },
+      { id: "inputtype", label: "Input Types", description: "Text, email, password, number, tel, url" },
+      { id: "datepicker", label: "Date/Time", description: "Date and time input handling" },
+      { id: "validation", label: "Validation", description: "Form validation and error states" },
+      { id: "prefix", label: "Prefix", description: "Text or icon prefixes" },
+      { id: "suffix", label: "Suffix", description: "Text or icon suffixes" },
+      { id: "mask", label: "Input Mask", description: "Input masking and formatting" },
+    ]
+  },
+  "/table": {
+    sections: [
+      { id: "basic", label: "Basic Table", description: "Simple table structure and data display" },
+      { id: "sorting", label: "Sorting", description: "Column sorting and custom sort functions" },
+      { id: "pagination", label: "Pagination", description: "Table pagination and page controls" },
+      { id: "filtering", label: "Filtering", description: "Data filtering and search capabilities" },
+      { id: "selection", label: "Selection", description: "Row selection and bulk actions" },
+      { id: "actions", label: "Actions", description: "Row actions and context menus" },
+    ]
+  },
+  "/modal": {
+    sections: [
+      { id: "basic", label: "Basic Modal", description: "Simple modal dialog implementation" },
+      { id: "sizes", label: "Modal Sizes", description: "Small, medium, large, fullscreen variants" },
+      { id: "confirmation", label: "Confirmation", description: "Confirmation dialogs and prompts" },
+      { id: "form", label: "Form Modals", description: "Modals with form content" },
+      { id: "async", label: "Async Operations", description: "Loading states and async actions" },
+    ]
+  },
+  "/authentication": {
+    sections: [
+      { id: "login", label: "Login Form", description: "User login and authentication" },
+      { id: "register", label: "Registration", description: "User registration and signup" },
+      { id: "password", label: "Password Reset", description: "Password recovery and reset" },
+      { id: "validation", label: "Form Validation", description: "Authentication form validation" },
+    ]
+  },
+  "/card": {
+    sections: [
+      { id: "basic", label: "Basic Card", description: "Simple card layout and content" },
+      { id: "header", label: "Card Header", description: "Card titles, subtitles, and headers" },
+      { id: "content", label: "Card Content", description: "Card body content and layout" },
+      { id: "footer", label: "Card Footer", description: "Card actions and footer content" },
+      { id: "variants", label: "Card Variants", description: "Different card styles and themes" },
+    ]
+  },
+  "/form": {
+    sections: [
+      { id: "layout", label: "Form Layout", description: "Form structure and organization" },
+      { id: "validation", label: "Validation", description: "Form validation and error handling" },
+      { id: "submission", label: "Submission", description: "Form submission and processing" },
+      { id: "fields", label: "Form Fields", description: "Input fields, selects, checkboxes" },
+    ]
+  },
+  "/navigation": {
+    sections: [
+      { id: "navbar", label: "Navigation Bar", description: "Top navigation and menu systems" },
+      { id: "sidebar", label: "Sidebar", description: "Side navigation and collapsible menus" },
+      { id: "breadcrumb", label: "Breadcrumbs", description: "Navigation breadcrumbs and paths" },
+      { id: "tabs", label: "Tabs", description: "Tab-based navigation" },
+    ]
+  },
+  "/data-display": {
+    sections: [
+      { id: "badge", label: "Badge", description: "Status indicators and labels" },
+      { id: "progress", label: "Progress", description: "Progress bars and indicators" },
+      { id: "stat-card", label: "Stat Card", description: "Statistics and metrics display" },
+      { id: "timeline", label: "Timeline", description: "Event timelines and histories" },
+    ]
+  },
+  "/layout": {
+    sections: [
+      { id: "grid", label: "Grid Layout", description: "CSS Grid system and layouts" },
+      { id: "flexbox", label: "Flexbox Layout", description: "Flexbox-based layouts and alignment" },
+      { id: "spacing", label: "Spacing", description: "Margin, padding, and spacing utilities" },
+      { id: "responsive", label: "Responsive", description: "Responsive design and breakpoints" },
+    ]
+  },
+}
+
+// Table data for global search
+const TABLE_RECORDS = [
+  // Cryptocurrency data from table docs
+  {
+    objectID: "crypto-ethereum",
+    name: "Ethereum",
+    description: "Cryptocurrency - ETH - $3,450.00 (+2.4%)",
+    path: "/table",
+    brand: "Cryptocurrency",
+    type: "table-record",
+    symbol: "ETH",
+    price: "$3,450.00",
+    change: "+2.4%",
+    status: "Active"
+  },
+  {
+    objectID: "crypto-bitcoin",
+    name: "Bitcoin",
+    description: "Cryptocurrency - BTC - $64,200.00 (+0.8%)",
+    path: "/table",
+    brand: "Cryptocurrency",
+    type: "table-record",
+    symbol: "BTC",
+    price: "$64,200.00",
+    change: "+0.8%",
+    status: "Active"
+  },
+  {
+    objectID: "crypto-solana",
+    name: "Solana",
+    description: "Cryptocurrency - SOL - $145.20 (-1.2%)",
+    path: "/table",
+    brand: "Cryptocurrency",
+    type: "table-record",
+    symbol: "SOL",
+    price: "$145.20",
+    change: "-1.2%",
+    status: "Warning"
+  },
+  // Sample user records
+  {
+    objectID: "user-john-doe",
+    name: "John Doe",
+    description: "Administrator - john.doe@example.com - Active since Jan 2024",
+    path: "/table",
+    brand: "User",
+    type: "table-record",
+    email: "john.doe@example.com",
+    role: "Administrator",
+    status: "Active",
+    joined: "Jan 2024"
+  },
+  {
+    objectID: "user-jane-smith",
+    name: "Jane Smith",
+    description: "Editor - jane.smith@example.com - Active since Feb 2024",
+    path: "/table",
+    brand: "User",
+    type: "table-record",
+    email: "jane.smith@example.com",
+    role: "Editor",
+    status: "Active",
+    joined: "Feb 2024"
+  },
+  {
+    objectID: "user-bob-johnson",
+    name: "Bob Johnson",
+    description: "Viewer - bob.johnson@example.com - Pending since Mar 2024",
+    path: "/table",
+    brand: "User",
+    type: "table-record",
+    email: "bob.johnson@example.com",
+    role: "Viewer",
+    status: "Pending",
+    joined: "Mar 2024"
+  },
+  // API endpoints
+  {
+    objectID: "api-users-get",
+    name: "GET /api/users",
+    description: "Retrieve list of users with pagination and filtering",
+    path: "/api",
+    brand: "API",
+    type: "table-record",
+    method: "GET",
+    endpoint: "/api/users",
+    status: "Active"
+  },
+  {
+    objectID: "api-users-post",
+    name: "POST /api/users",
+    description: "Create new user account",
+    path: "/api",
+    brand: "API",
+    type: "table-record",
+    method: "POST",
+    endpoint: "/api/users",
+    status: "Active"
+  },
+  // Storage records
+  {
+    objectID: "storage-profile-images",
+    name: "Profile Images",
+    description: "User profile pictures and avatars storage",
+    path: "/storage",
+    brand: "Storage",
+    type: "table-record",
+    size: "2.4 GB",
+    files: "1,250 files",
+    lastModified: "2 hours ago"
+  },
+  {
+    objectID: "storage-documents",
+    name: "Documents",
+    description: "User uploaded documents and files",
+    path: "/storage",
+    brand: "Storage",
+    type: "table-record",
+    size: "15.8 GB",
+    files: "3,420 files",
+    lastModified: "1 day ago"
+  },
+]
+
+// Create comprehensive search records for global search
+const SEARCH_RECORDS = [
+  // Page-level records
+  ...Object.entries(ROUTE_LABELS).map(([path, label], index) => ({
+    objectID: `page-${index}`,
+    name: label,
+    description: `Documentation for ${label.toLowerCase()}`,
+    path: path,
+    brand: "Documentation",
+    type: "page",
+  })),
+
+  // Section-level records from content registry
+  ...Object.entries(PAGE_CONTENT_REGISTRY).flatMap(([pagePath, pageData]) =>
+    pageData.sections.map((section, sectionIndex) => ({
+      objectID: `section-${pagePath.replace('/', '')}-${sectionIndex}`,
+      name: section.label,
+      description: section.description,
+      path: `${pagePath}#${section.id}`,
+      brand: ROUTE_LABELS[pagePath] || "Component",
+      type: "section",
+    }))
+  ),
+
+  // Table records from various data sources
+  ...TABLE_RECORDS,
+
+  // Component feature records - add more specific searchable items
+  {
+    objectID: "feature-button-variants",
+    name: "Button Variants",
+    description: "Primary, secondary, outline, ghost, link, danger, success button styles",
+    path: "/buttons",
+    brand: "Button",
+    type: "feature",
+  },
+  {
+    objectID: "feature-button-sizes",
+    name: "Button Sizes",
+    description: "Small, medium, large button sizing options",
+    path: "/buttons",
+    brand: "Button",
+    type: "feature",
+  },
+  {
+    objectID: "feature-input-validation",
+    name: "Input Validation",
+    description: "Form validation, error states, success states for input fields",
+    path: "/inputs",
+    brand: "Input",
+    type: "feature",
+  },
+  {
+    objectID: "feature-table-sorting",
+    name: "Table Sorting",
+    description: "Column sorting, multi-column sort, custom sort functions",
+    path: "/table",
+    brand: "Table",
+    type: "feature",
+  },
+  {
+    objectID: "feature-modal-sizes",
+    name: "Modal Sizes",
+    description: "Small, medium, large, fullscreen modal variants",
+    path: "/modal",
+    brand: "Modal",
+    type: "feature",
+  },
+  {
+    objectID: "feature-theme-dark",
+    name: "Dark Theme",
+    description: "Dark mode support, theme switching, CSS variables",
+    path: "/settings",
+    brand: "Theme",
+    type: "feature",
+  },
+  {
+    objectID: "feature-responsive-design",
+    name: "Responsive Design",
+    description: "Mobile-first approach, breakpoint system, adaptive layouts",
+    path: "/grid-layout",
+    brand: "Layout",
+    type: "feature",
+  },
+  {
+    objectID: "feature-api-integration",
+    name: "API Integration",
+    description: "REST API calls, data fetching, error handling, loading states",
+    path: "/api",
+    brand: "API",
+    type: "feature",
+  },
+  {
+    objectID: "feature-form-validation",
+    name: "Form Validation",
+    description: "Client-side validation, error messages, field validation rules",
+    path: "/authentication",
+    brand: "Forms",
+    type: "feature",
+  },
+  {
+    objectID: "feature-data-visualization",
+    name: "Data Visualization",
+    description: "Charts, graphs, progress bars, stat cards, metrics display",
+    path: "/stat-card",
+    brand: "Data",
+    type: "feature",
+  },
+  {
+    objectID: "feature-navigation-components",
+    name: "Navigation Components",
+    description: "Breadcrumbs, pagination, stepper, tabs, accordions",
+    path: "/breadcrumb",
+    brand: "Navigation",
+    type: "feature",
+  },
+  {
+    objectID: "feature-overlay-components",
+    name: "Overlay Components",
+    description: "Modals, drawers, popovers, tooltips, context menus",
+    path: "/modal",
+    brand: "Overlay",
+    type: "feature",
+  },
+  {
+    objectID: "feature-interactive-elements",
+    name: "Interactive Elements",
+    description: "Buttons, toggles, checkboxes, radio groups, sliders, select dropdowns",
+    path: "/buttons",
+    brand: "Interactive",
+    type: "feature",
+  },
+  {
+    objectID: "feature-layout-systems",
+    name: "Layout Systems",
+    description: "Grid layouts, flexbox layouts, responsive panels, resizable panels",
+    path: "/grid-layout",
+    brand: "Layout",
+    type: "feature",
+  },
+  {
+    objectID: "feature-file-handling",
+    name: "File Handling",
+    description: "File uploads, drag and drop, file validation, progress indicators",
+    path: "/fileupload",
+    brand: "File",
+    type: "feature",
+  },
+  {
+    objectID: "feature-state-management",
+    name: "State Management",
+    description: "Loading states, error states, empty states, state persistence",
+    path: "/settings",
+    brand: "State",
+    type: "feature",
+  },
+]
 
 function SidebarNavItem({
   to,
@@ -252,7 +636,6 @@ function AppShell() {
       </SidebarGroup>
       <SidebarGroup title="Data Display">
         <SidebarNavItem to="/table" icon={TableIcon} label="Table" />
-        <SidebarNavItem to="/data-grid" icon={Grid3x3} label="Data Grid" />
         <SidebarNavItem to="/widget" icon={LayoutDashboard} label="Widget" />
         <SidebarNavItem to="/card" icon={Box} label="Card" />
         <SidebarNavItem to="/badge" icon={Tag} label="Badge" />
@@ -279,8 +662,8 @@ function AppShell() {
         <SidebarNavItem to="/drawer" icon={PanelRightClose} label="Drawer / Sheet" />
         <SidebarNavItem to="/popover" icon={MousePointer2} label="Popover" />
         <SidebarNavItem to="/context-menu" icon={MousePointer2} label="Context Menu" />
-        <SidebarNavItem to="/command-palette" icon={Terminal} label="Command Palette" />
         <SidebarNavItem to="/dropdown" icon={Component} label="Dropdown" />
+        <SidebarNavItem to="/modal-global-search" icon={Search} label="Modal Global Search" />
         <SidebarNavItem to="/placeholder" icon={Ghost} label="Placeholder" />
       </SidebarGroup>
       <SidebarGroup title="Tools">
@@ -305,6 +688,12 @@ function AppShell() {
       sidebarCollapsible
       topbar={<h1 className="text-xl font-semibold">{label}</h1>}
       rightSidebar={tocItems.length ? <TableOfContents items={tocItems} /> : undefined}
+      allowGlobalSearch
+      globalSearchRecords={SEARCH_RECORDS}
+      recordTitleAttribute="name"
+      globalSearchDescriptionAttribute="description"
+      globalSearchResultsLimit={8}
+      onGlobalSearchSelect={(record: GlobalSearchRecord) => console.log("selected:", record)}
     >
       <div className="mx-auto max-w-full space-y-8 pb-12">
         <Routes>
@@ -336,7 +725,6 @@ function AppShell() {
           <Route path="/Map" element={<LeafletMapDocs />} />
           <Route path="/Globe" element={<MapLibreMapDocs />} />
           <Route path="/calendar" element={<CalendarDocs />} />
-          <Route path="/data-grid" element={<DataGridDocs />} />
           <Route path="/bulletin-board" element={<BulletinBoardDocs />} />  
           <Route path="/kanban" element={<KanbanDocs />} />
           <Route path="/drawer" element={<DrawerDocs />} />
@@ -367,9 +755,10 @@ function AppShell() {
           <Route path="/storage" element={<StorageStoreDocs />} />
           <Route path="/decryption" element={<DecryptionDocs />} />
           <Route path="/avatarstack" element={<AvatarStackDocs />} />
-          <Route path="/ui-builder" element={<UIBuilder />} />
-          <Route path="/packages" element={<PackagesDocs />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+           <Route path="/ui-builder" element={<UIBuilder />} />
+           <Route path="/packages" element={<PackagesDocs />} />
+           <Route path="/modal-global-search" element={<ModalGlobalSearchDocs />} />
+           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Layout>

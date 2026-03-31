@@ -30,9 +30,10 @@ export interface FileTypeValidation {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-export interface FileUploadProps extends React.HTMLAttributes<HTMLDivElement>, FileTypeValidation {
+export interface FileUploadProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'>, FileTypeValidation {
   onFileSelect?: (file: File | null) => void
   onFilesChange?: (files: File[]) => void
+  onChange?: (files: File[]) => void
   /** Called when any validation rule fails */
   onValidationError?: (message: string, file: File) => void
   accept?: string
@@ -279,6 +280,7 @@ export function FileUpload({
   className,
   onFileSelect,
   onFilesChange,
+  onChange,
   onValidationError,
   accept,
   multiple = false,
@@ -338,8 +340,10 @@ export function FileUpload({
       const next = [...files, ...arr].slice(0, maxFiles ?? Infinity)
       const newPreviews = await Promise.all(next.map(generatePreview))
       setPreviews(Object.fromEntries(newPreviews.filter(([, v]) => v)))
-      setFiles(next)
-      onFilesChange?.(next)
+    setFiles(next)
+    onFilesChange?.(next)
+    onChange?.(next)
+      onChange?.(next)
     } else {
       const f = arr[0]
       const [name, src] = await generatePreview(f)
@@ -347,6 +351,7 @@ export function FileUpload({
       setFiles([f])
       onFileSelect?.(f)
       onFilesChange?.([f])
+      onChange?.([f])
     }
   }
 
@@ -387,6 +392,7 @@ export function FileUpload({
     dragItem.current = null; dragOverItem.current = null
     setFiles(next)
     onFilesChange?.(next)
+    onChange?.(next)
   }
 
   const isEmpty = files.length === 0

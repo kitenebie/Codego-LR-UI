@@ -29,6 +29,7 @@ const TOC = [
   { id: "nosidebar", label: "No Sidebar" },
   { id: "themetoggle", label: "Theme Toggle" },
   { id: "settingspage", label: "Settings Page" },
+  { id: "global-search", label: "Global Search" },
   { id: "mobile-bottom-tabs", label: "Mobile — Bottom Tabs" },
   { id: "mobile-bottom-tabs-groups", label: "Mobile — Bottom Tabs + Groups" },
   { id: "mobile-drawer", label: "Mobile — Drawer" },
@@ -567,6 +568,76 @@ const [active, setActive] = useState("settings")
           </div>
         </Playground>
       </Section>
+      <Section id="global-search">
+        <Playground
+          title="Modal Global Search"
+          description="Enable allowGlobalSearch with searchRecords to add a modal-based search that displays results in an overlay. Click the search input to open the modal and search through your records."
+          code={`const SEARCH_RECORDS = [
+  {
+    objectID: "item-1",
+    name: "Dashboard",
+    description: "Main dashboard overview",
+    path: "/",
+  },
+  {
+    objectID: "item-2",
+    name: "Users",
+    description: "User management page",
+    path: "/users",
+  }
+]
+
+<Panel
+  allowGlobalSearch
+  globalSearchRecords={SEARCH_RECORDS}
+  recordTitleAttribute="name"
+  globalSearchDescriptionAttribute="description"
+  globalSearchResultsLimit={8}
+  globalSearchPosition="top-bar"
+  onGlobalSearchSelect={(record) => {
+    console.log("Selected:", record)
+    // Handle navigation or other actions
+  }}
+  topbar={<span className="font-semibold text-sm">My App</span>}
+  sidebar={<NavItems active={active} setActive={setActive} />}
+>
+  <PageContent active={active} />
+</Panel>`}
+        >
+          <div className="w-full max-w-2xl">
+            <Panel
+              height="h-64"
+              allowGlobalSearch
+              globalSearchRecords={[
+                { objectID: "1", name: "Dashboard", description: "Main overview page", path: "/" },
+                { objectID: "2", name: "Users", description: "Manage user accounts", path: "/users" },
+                { objectID: "3", name: "Settings", description: "Application settings", path: "/settings" },
+                { objectID: "4", name: "Analytics", description: "View analytics data", path: "/analytics" },
+              ]}
+              globalSearchPosition="top-bar"
+              onGlobalSearchSelect={(record) => {
+                console.log("Selected record:", record)
+                alert(`Selected: ${record.name}`)
+              }}
+              topbar={<span className="font-semibold text-sm">Demo App</span>}
+              sidebar={
+                <>
+                  <PanelSidebarGroup title="Navigation">
+                    <PanelSidebarItem icon={LayoutDashboard} label="Dashboard" active />
+                    <PanelSidebarItem icon={Users} label="Users" />
+                    <PanelSidebarItem icon={Settings} label="Settings" />
+                  </PanelSidebarGroup>
+                </>
+              }
+            >
+              <div className="p-4 text-sm text-muted-foreground">
+                Click the search input above to open the modal search.
+              </div>
+            </Panel>
+          </div>
+        </Playground>
+      </Section>
+
       <Section id="mobile-bottom-tabs">
         <Playground
           title="Mobile Panel — Bottom Tabs"
@@ -706,6 +777,14 @@ const [active, setActive] = useState("settings")
         { prop: "height", type: "string", default: '"h-[520px]"', description: "Tailwind height class for the panel container." },
         { prop: "children", type: "ReactNode", description: "Main content area." },
         { prop: "className", type: "string", description: "Additional CSS classes on the outer wrapper." },
+        { prop: "allowGlobalSearch", type: "boolean", default: "false", description: "Enable global search across resource records." },
+        { prop: "globalSearchClient", type: "SearchClient", description: "Algolia/InstantSearch-compatible search client." },
+        { prop: "globalSearchIndexName", type: "string", default: '"records"', description: "Algolia index name to search against." },
+        { prop: "recordTitleAttribute", type: "string", default: '"title"', description: "Record attribute used as the display label in results." },
+        { prop: "globalSearchResultsLimit", type: "number", default: "5", description: "Maximum number of search results to display." },
+        { prop: "globalSearchPosition", type: '"top-bar" | "side-bar"', default: '"top-bar"', description: "Where to render the search box." },
+        { prop: "globalSearchDebounce", type: "number", default: "300", description: "Debounce delay in ms before the search query fires." },
+        { prop: "onGlobalSearchSelect", type: "(record: GlobalSearchRecord) => void", description: "Called when the user selects a search result." },
       ]} /></Section>
 
       <Section id="dataformat"><PropsTable rows={[

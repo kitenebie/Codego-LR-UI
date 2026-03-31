@@ -2,6 +2,8 @@ import { Playground } from "../components/playground"
 import { DocsLayout, Section } from "../components/ui/toc"
 import { SectionBlock } from "../components/ui/section"
 import { Button } from "../components/ui/button"
+import { Input } from "../components/ui/input"
+import { Table } from "../components/ui/table"
 import { Settings, Info, AlertTriangle, Plus, ChevronRight } from "lucide-react"
 import { PropsTable } from "../components/ui/props-table"
 
@@ -10,11 +12,18 @@ const TOC = [
   { id: "card",       label: "Card Variant" },
   { id: "bordered",   label: "Bordered Variant" },
   { id: "ghost",      label: "Ghost Variant" },
+  { id: "neumorphic", label: "Neumorphic Variant" },
+  { id: "gradient",   label: "Gradient Variant" },
+  { id: "glass",      label: "Glass Variant" },
+  { id: "elevated",   label: "Elevated Variant" },
+  { id: "modern",     label: "Modern Variant" },
+  { id: "professional", label: "Professional Variant" },
   { id: "icon",       label: "With Icon" },
   { id: "action",     label: "With Action" },
   { id: "divider",    label: "With Divider" },
   { id: "collapsible",label: "Collapsible" },
   { id: "nested",     label: "Nested Sections" },
+  { id: "content",    label: "Tables & Forms" },
   { id: "props",      label: "Props" },
 ]
 
@@ -81,6 +90,108 @@ export function SectionDocs() {
           <div className="w-full">
             <SectionBlock variant="ghost" title="Tips & Shortcuts" description="Helpful hints to get the most out of the app.">
               <p className="text-sm text-muted-foreground">Press ⌘K to open the command palette at any time.</p>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
+      {/* ── Neumorphic Variant ── */}
+      <Section id="neumorphic">
+        <Playground
+          title="Neumorphic Variant"
+          description="Soft, inset shadow effect for a tactile feel."
+          code={`<SectionBlock variant="neumorphic" title="Neumorphic Section">
+  <p>Content with neumorphic styling.</p>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="neumorphic" title="Neumorphic Section" description="Soft shadows and borders.">
+              <p className="text-sm text-muted-foreground">This variant uses inset shadows for a pressed-in look.</p>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
+      {/* ── Gradient Variant ── */}
+      <Section id="gradient">
+        <Playground
+          title="Gradient Variant"
+          description="Subtle gradient background with primary colors."
+          code={`<SectionBlock variant="gradient" title="Gradient Section">
+  <p>Content with gradient background.</p>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="gradient" title="Gradient Section" description="Gradient from primary to secondary.">
+              <p className="text-sm text-muted-foreground">Perfect for highlighting important sections.</p>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
+      {/* ── Glass Variant ── */}
+      <Section id="glass">
+        <Playground
+          title="Glass Variant"
+          description="Glassmorphism with backdrop blur and transparency."
+          code={`<SectionBlock variant="glass" title="Glass Section">
+  <p>Content with glass effect.</p>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="glass" title="Glass Section" description="Transparent with blur background.">
+              <p className="text-sm text-muted-foreground">Modern glassmorphism design.</p>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
+      {/* ── Elevated Variant ── */}
+      <Section id="elevated">
+        <Playground
+          title="Elevated Variant"
+          description="Strong shadow for depth and elevation."
+          code={`<SectionBlock variant="elevated" title="Elevated Section">
+  <p>Content with strong shadow.</p>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="elevated" title="Elevated Section" description="High elevation with shadow.">
+              <p className="text-sm text-muted-foreground">Great for modal-like sections.</p>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
+      {/* ── Modern Variant ── */}
+      <Section id="modern">
+        <Playground
+          title="Modern Variant"
+          description="Clean, modern design with subtle gradients."
+          code={`<SectionBlock variant="modern" title="Modern Section">
+  <p>Content with modern styling.</p>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="modern" title="Modern Section" description="Contemporary design.">
+              <p className="text-sm text-muted-foreground">Balanced and professional.</p>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
+      {/* ── Professional Variant ── */}
+      <Section id="professional">
+        <Playground
+          title="Professional Variant"
+          description="Formal card design suitable for business apps."
+          code={`<SectionBlock variant="professional" title="Professional Section">
+  <p>Content for professional use.</p>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="professional" title="Professional Section" description="Business-ready styling.">
+              <p className="text-sm text-muted-foreground">Ideal for enterprise applications.</p>
             </SectionBlock>
           </div>
         </Playground>
@@ -205,13 +316,63 @@ export function SectionDocs() {
         </Playground>
       </Section>
 
+      <Section id="content">
+        <Playground
+          title="Tables & Forms"
+          description="Sections can contain complex content like tables and forms."
+          code={`<SectionBlock variant="card" title="User Management">
+  <div className="space-y-4">
+    <form className="flex gap-2">
+      <Input placeholder="Search users..." />
+      <Button type="submit">Search</Button>
+    </form>
+    <Table
+      data={[
+        { id: 1, name: "John Doe", email: "john@example.com", role: "Admin" },
+        { id: 2, name: "Jane Smith", email: "jane@example.com", role: "User" },
+      ]}
+      columns={[
+        { key: "name", title: "Name" },
+        { key: "email", title: "Email" },
+        { key: "role", title: "Role" },
+      ]}
+      searchable={false}
+    />
+  </div>
+</SectionBlock>`}
+        >
+          <div className="w-full">
+            <SectionBlock variant="card" title="User Management" description="Manage users and their permissions.">
+              <div className="space-y-4">
+                <form className="flex gap-2">
+                  <Input placeholder="Search users..." />
+                  <Button type="submit">Search</Button>
+                </form>
+                <Table
+                  data={[
+                    { id: 1, name: "John Doe", email: "john@example.com", role: "Admin" },
+                    { id: 2, name: "Jane Smith", email: "jane@example.com", role: "User" },
+                  ]}
+                  columns={[
+                    { key: "name", title: "Name" },
+                    { key: "email", title: "Email" },
+                    { key: "role", title: "Role" },
+                  ]}
+                  searchable={false}
+                />
+              </div>
+            </SectionBlock>
+          </div>
+        </Playground>
+      </Section>
+
       <Section id="props"><PropsTable rows={[
         { prop: "title",            type: "ReactNode",                                                    description: "Section heading." },
         { prop: "description",      type: "ReactNode",                                                    description: "Subtitle shown below the title." },
         { prop: "icon",             type: "ReactNode",                                                    description: "Leading icon next to the title." },
         { prop: "action",           type: "ReactNode",                                                    description: "Action slot in the top-right corner." },
         { prop: "children",         type: "ReactNode",         required: true,                            description: "Section body content." },
-        { prop: "variant",          type: '"default" | "card" | "bordered" | "ghost"', default: '"default"', description: "Visual style of the section wrapper." },
+        { prop: "variant",          type: '"default" | "card" | "bordered" | "ghost" | "neumorphic" | "gradient" | "glass" | "elevated" | "modern" | "professional" | ... (50 variants)', default: '"default"', description: "Visual style of the section wrapper with 50 modern professional variants." },
         { prop: "collapsible",      type: "boolean",           default: "false",                          description: "Allow the section to be toggled open/closed." },
         { prop: "defaultOpen",      type: "boolean",           default: "true",                           description: "Initial open state for collapsible sections." },
         { prop: "divider",          type: "boolean",           default: "false",                          description: "Add a border between the header and body." },

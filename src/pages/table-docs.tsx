@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input"
 import { ShieldCheck, ShieldAlert, ShieldX, Star, Download, ChevronDown, ChevronUp, X, Mail, Phone, MapPin } from "lucide-react"
 import * as React from "react"
 import tableDocsData from "../components/docs/table.json"
+import { useTableSearchRegistration } from "../hooks/use-table-search"
 
 function ProfileCell({ name, email, avatar }: { name: string; email: string; avatar: string }) {
   return (
@@ -85,6 +86,23 @@ const USER_DATA = NAMES.map((name, i) => ({
 }))
 
 export function TableDocs() {
+  // Register table data for global search
+  useTableSearchRegistration("cryptocurrencies", COIN_DATA.map(coin => ({
+    ...coin,
+    name: coin.name,
+    description: `${coin.symbol} - ${coin.price} (${coin.change}) - ${coin.status}`,
+    brand: "Cryptocurrency",
+    path: "/table"
+  })))
+
+  useTableSearchRegistration("users", USER_DATA.map(user => ({
+    ...user,
+    name: user.name,
+    description: `${user.email} - ${user.role} - ${user.department} - ${user.status}`,
+    brand: "User",
+    path: "/table"
+  })))
+
   // Get component data from table.json
   const tableComponent = tableDocsData?.components?.find?.((c: any) => c.name === "Table")
   const columnComponent = tableDocsData?.components?.find?.((c: any) => c.name === "Column")
@@ -178,6 +196,7 @@ export function TableDocs() {
               confirmModalContent: "Are you sure you want to change the status? This action may affect other systems.",
               confirmModalCancelText: "Cancel",
               confirmModalSubmitText: "Change Status",
+              onChange: (item, value, actions) => actions?.openConfirmModal?.(item, value),
               onSubmitAction: (item, value) => console.log('Status changed for', item.name, 'to', value)
             },
 ]
@@ -1836,7 +1855,7 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
       {/* ── Column Configuration ── */}
       <Section id="columnconfig"><Playground
         title="Column Configuration (hideColumns, sortableColumns, filterableColumns, confirmation)"
-        description="Control column visibility, sorting, filtering, widths, and confirmation with hideColumns, sortableColumns, filterableColumns, columnHeaderWidth, and confirmation props. hideColumns hides specified columns, sortableColumns enables sorting on specific columns, filterableColumns renders filter inputs above the table for date ranges, single dates, and select dropdowns, columnHeaderWidth sets custom widths for column headers, and confirmation shows a modal for change confirmation."
+        description="Control column visibility, sorting, filtering, widths, and confirmation with hideColumns, sortableColumns, filterableColumns, columnHeaderWidth, and confirmation props. hideColumns hides specified columns, sortableColumns enables sorting on specific columns, filterableColumns renders filter inputs above the table for date ranges, single dates, and select dropdowns, columnHeaderWidth sets custom widths for column headers, and confirmation shows a modal for change confirmation. For confirmation columns, onChange receives an actions parameter with openConfirmModal to trigger the modal before onSubmitAction."
         code={`<Table
   data={data}
   columns={columns}
@@ -1886,6 +1905,18 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
             { key: "status",     title: "Status",     type: "badge", sortable: true },
             { key: "created_at", title: "Created",    type: "date" },
             { key: "updated_at", title: "Updated",    type: "date" },
+            // Confirmation column example
+            {
+              key: "role_select",
+              title: "Role (Confirm)",
+              type: "select",
+              selectOptions: ["Admin", "Editor", "Viewer"],
+              confirmation: true,
+              confirmModalTitle: "Confirm Role Change",
+              confirmModalContent: "Changing the role may affect permissions. Continue?",
+              onChange: (item, value, actions) => actions?.openConfirmModal?.(item, value),
+              onSubmitAction: (item, value) => console.log('Role changed for', item.name, 'to', value)
+            }
           ]
           return (
             <div className="space-y-3 w-full flex flex-grow">
@@ -1907,9 +1938,11 @@ const { data, columns, serverPagination, loading, filterBar } = useServerTable({
                 columnHeaderWidth={{
                   name: "200px",
                   status: 120,
-                  created_at: "180px"
+                  created_at: "180px",
+                  role_select: "150px"
                 }}
-                filterableColumns={[
+  // For confirmation columns, onChange receives actions.openConfirmModal
+  filterableColumns={[
                   {
                     column: 'created_at',
                     type: 'date',

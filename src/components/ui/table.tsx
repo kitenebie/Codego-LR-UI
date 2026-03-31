@@ -1572,7 +1572,7 @@ export interface Column<T> {
   render?: (item: T) => React.ReactNode
   sortable?: boolean
   /** Called when a cell value changes (select, toggle, color, checkbox) */
-  onChange?: (item: T, value: any) => void
+  onChange?: (item: T, value: any, actions?: { openConfirmModal?: (item: T, value: any) => void }) => void
   /** Show confirmation modal before applying changes */
   confirmation?: boolean
   confirmModalTitle?: string
@@ -2192,6 +2192,50 @@ export function Table<T extends Record<string, any>>({
 
   return (
     <>
+      {/* Confirmation Modal */}
+      <Modal
+        isOpen={!!confirmItem}
+        onClose={() => {
+          setConfirmItem(null)
+          setConfirmValue(null)
+          setConfirmCol(null)
+        }}
+        title={confirmCol?.confirmModalTitle || "Confirm Change"}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {confirmCol?.confirmModalContent || "Are you sure you want to apply this change?"}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setConfirmItem(null)
+                setConfirmValue(null)
+                setConfirmCol(null)
+              }}
+            >
+              {confirmCol?.confirmModalCancelText || "Cancel"}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (confirmCol?.onSubmitAction && confirmItem) {
+                  confirmCol.onSubmitAction(confirmItem, confirmValue)
+                }
+                setConfirmItem(null)
+                setConfirmValue(null)
+                setConfirmCol(null)
+              }}
+            >
+              {confirmCol?.confirmModalSubmitText || "Continue"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
     <div className={cn("w-full space-y-3", className)}>
 
       {/* Error state */}
@@ -2601,13 +2645,8 @@ export function Table<T extends Record<string, any>>({
                              <select
                                value={item[col.key]}
                                onChange={(e) => {
-                                 if (col.confirmation) {
-                                   setConfirmItem(item)
-                                   setConfirmValue(e.target.value)
-                                   setConfirmCol(col)
-                                 } else {
-                                   col.onChange?.(item, e.target.value)
-                                 }
+                                 const value = e.target.value
+                                 col.onChange?.(item, value, col.confirmation ? { openConfirmModal: (i, v) => { setConfirmItem(i); setConfirmValue(v); setConfirmCol(col); } } : undefined)
                                }}
                                className="h-8 rounded-lg border border-border bg-background/50 px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                              >
@@ -2621,13 +2660,7 @@ export function Table<T extends Record<string, any>>({
                                aria-checked={!!item[col.key]}
                                onClick={() => {
                                  const newValue = !item[col.key]
-                                 if (col.confirmation) {
-                                   setConfirmItem(item)
-                                   setConfirmValue(newValue)
-                                   setConfirmCol(col)
-                                 } else {
-                                   col.onChange?.(item, newValue)
-                                 }
+                                 col.onChange?.(item, newValue, col.confirmation ? { openConfirmModal: (i, v) => { setConfirmItem(i); setConfirmValue(v); setConfirmCol(col); } } : undefined)
                                }}
                                className={cn(
                                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -2645,13 +2678,8 @@ export function Table<T extends Record<string, any>>({
                                  type="color"
                                  value={item[col.key] || "#000000"}
                                  onChange={(e) => {
-                                   if (col.confirmation) {
-                                     setConfirmItem(item)
-                                     setConfirmValue(e.target.value)
-                                     setConfirmCol(col)
-                                   } else {
-                                     col.onChange?.(item, e.target.value)
-                                   }
+                                   const value = e.target.value
+                                   col.onChange?.(item, value, col.confirmation ? { openConfirmModal: (i, v) => { setConfirmItem(i); setConfirmValue(v); setConfirmCol(col); } } : undefined)
                                  }}
                                  className="h-7 w-7 cursor-pointer rounded border border-border bg-transparent p-0.5"
                                />
@@ -2661,13 +2689,8 @@ export function Table<T extends Record<string, any>>({
                              <Checkbox
                                checked={!!item[col.key]}
                                onChange={(e) => {
-                                 if (col.confirmation) {
-                                   setConfirmItem(item)
-                                   setConfirmValue(e.target.checked)
-                                   setConfirmCol(col)
-                                 } else {
-                                   col.onChange?.(item, e.target.checked)
-                                 }
+                                 const value = e.target.checked
+                                 col.onChange?.(item, value, col.confirmation ? { openConfirmModal: (i, v) => { setConfirmItem(i); setConfirmValue(v); setConfirmCol(col); } } : undefined)
                                }}
                              />
                           ) : col.type === "text-url" ? (() => {
@@ -2695,13 +2718,16 @@ export function Table<T extends Record<string, any>>({
                             )
                            })(                           ) : col.type === "date" ? (
                              col.onChange ? (
-                               <Input
-                                 inputType="date"
-                                 suffixIcon={<Calendar size={16} />}
-                                 value={item[col.key] || ""}
-                                 onChange={(e) => col.onChange?.(item, e.target.value)}
-                                 className="h-8 w-40"
-                               />
+                             <Input
+                               inputType="date"
+                               suffixIcon={<Calendar size={16} />}
+                               value={item[col.key] || ""}
+                               onChange={(e) => {
+                                 const value = e.target.value
+                                 col.onChange?.(item, value, col.confirmation ? { openConfirmModal: (i, v) => { setConfirmItem(i); setConfirmValue(v); setConfirmCol(col); } } : undefined)
+                               }}
+                               className="h-8 w-40"
+                             />
                              ) : (
                                <span className="text-foreground/90">
                                  {item[col.key]
@@ -2720,11 +2746,14 @@ export function Table<T extends Record<string, any>>({
                                    from: item[col.key]?.from ? new Date(item[col.key].from) : null,
                                    to: item[col.key]?.to ? new Date(item[col.key].to) : null,
                                  }}
-                                 onChange={(range) => col.onChange?.(item, {
-                                   from: range.from?.toISOString().split('T')[0],
-                                   to: range.to?.toISOString().split('T')[0],
-                                 })}
-                                 className="w-full"
+                                 onChange={(range) => {
+                                   const value = {
+                                     from: range.from?.toISOString().split('T')[0],
+                                     to: range.to?.toISOString().split('T')[0],
+                                   }
+                                   col.onChange?.(item, value, col.confirmation ? { openConfirmModal: (i, v) => { setConfirmItem(i); setConfirmValue(v); setConfirmCol(col); } } : undefined)
+                                 }}
+                                 className="w-64 max-w-64 shrink-0"
                                />
                              ) : (
                                <span className="text-foreground/90">

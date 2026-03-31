@@ -1,10 +1,41 @@
 import * as React from "react"
-import { Menu, Moon, Sun, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { Menu, Moon, Sun, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react"
 import { cn } from "@/src/lib/utils"
 import { useTheme } from "../theme-provider"
 import { Button } from "../ui/button"
 import { LeftSidebar, RightSidebar } from "../ui/navigation"
 import { Tooltip } from "../ui/tooltip"
+import { GlobalSearchInput } from "../ui/global-search-input"
+import { GlobalSearchModal } from "../ui/global-search-modal"
+import { getRegisteredTableRecords } from "../../hooks/use-table-search"
+import { useNavigate } from "react-router-dom"
+
+export interface GlobalSearchRecord {
+  objectID: string
+  name: string
+  description?: string
+  path: string
+  brand?: string
+  [key: string]: any
+}
+
+function GlobalSearchPanel({
+  onInputFocus,
+}: {
+  onInputFocus?: () => void
+}) {
+  return (
+    <div className="w-64">
+      <GlobalSearchInput
+        value=""
+        onChange={() => {}}
+        onFocus={onInputFocus}
+        showClearButton={false}
+        className="w-full cursor-pointer"
+      />
+    </div>
+  )
+}
 
 const SidebarContext = React.createContext<{
   setSidebarOpen: (open: boolean) => void
@@ -32,6 +63,22 @@ export interface LayoutProps {
   rightSidebarWidth?: string
   rightSidebarSticky?: boolean
   topbar?: React.ReactNode
+  /** Enable global search */
+  allowGlobalSearch?: boolean
+  /** Search records for local search */
+  globalSearchRecords?: GlobalSearchRecord[]
+  /** Record attribute used as the display title */
+  recordTitleAttribute?: string
+  /** Record attribute used as the description */
+  globalSearchDescriptionAttribute?: string
+  /** Max hits per page. Default 8 */
+  globalSearchResultsLimit?: number
+  /** Called when a result is selected */
+  onGlobalSearchSelect?: (record: GlobalSearchRecord) => void
+  /** Global search modal open state */
+  globalSearchModalOpen?: boolean
+  /** Called when global search modal should close */
+  onGlobalSearchModalClose?: () => void
 }
 
 export function Layout({
@@ -48,7 +95,22 @@ export function Layout({
   rightSidebarWidth = "w-52",
   rightSidebarSticky = true,
   topbar,
+  allowGlobalSearch = false,
+  globalSearchRecords = [],
+  recordTitleAttribute = "name",
+  globalSearchDescriptionAttribute = "description",
+  globalSearchResultsLimit = 8,
+  onGlobalSearchSelect,
+  globalSearchModalOpen = false,
+  onGlobalSearchModalClose,
 }: LayoutProps) {
+  const [searchModalOpen, setSearchModalOpen] = React.useState(false)
+
+  const searchBox = allowGlobalSearch ? (
+    <GlobalSearchPanel
+      onInputFocus={() => setSearchModalOpen(true)}
+    />
+  ) : null
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
   const [collapsedInternal, setCollapsedInternal] = React.useState(false)
 
@@ -106,7 +168,7 @@ export function Layout({
               {sidebar && (
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="md"
                   className="md:hidden"
                   onClick={() => setSidebarOpen(true)}
                 >
@@ -117,7 +179,7 @@ export function Layout({
               {sidebarCollapsible && sidebar && (
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="md"
                   className="hidden md:flex"
                   onClick={toggleCollapsed}
                   title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -128,6 +190,7 @@ export function Layout({
                 </Button>
               )}
               {topbar}
+              {searchBox}
             </div>
             <div className="flex items-center space-x-4">
               <ThemeToggle />
@@ -135,8 +198,22 @@ export function Layout({
           </header>
 
           {/* Main scrollable area */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-            {children} 
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
+
+            {children}
+
+            {/* Global Search Modal */}
+            {allowGlobalSearch && (
+              <GlobalSearchModal
+                isOpen={searchModalOpen}
+                onClose={() => setSearchModalOpen(false)}
+                searchRecords={globalSearchRecords}
+                recordTitleAttribute={recordTitleAttribute}
+                globalSearchDescriptionAttribute={globalSearchDescriptionAttribute}
+                globalSearchResultsLimit={globalSearchResultsLimit}
+                onGlobalSearchSelect={onGlobalSearchSelect}
+              />
+            )}
           </main>
         </div>
 
@@ -221,7 +298,7 @@ function ThemeToggle() {
   return (
     <Button
       variant="ghost"
-      size="icon"
+      size="md"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
     >
       <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

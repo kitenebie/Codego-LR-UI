@@ -1,6 +1,6 @@
 import { Routes, Route, NavLink, useLocation, Navigate } from "react-router-dom"
 import { Layout, SidebarGroup, useSidebarCollapsed, type GlobalSearchRecord } from "./components/layout/layout"
-
+  
 import { ThemeProvider } from "./components/theme-provider"
 import { TocProvider, TableOfContents, useToc } from "./components/ui/toc"
 import { Tooltip } from "./components/ui/tooltip"
@@ -36,12 +36,12 @@ import {
   PanelRightClose,
   MousePointer2,
   Footprints,
-  Terminal,
   Circle,
   Globe2Icon,
   RouteIcon,
   Database,
   Search,
+  FileText,
 } from "lucide-react"
 import { cn } from "./lib/utils"
 
@@ -87,7 +87,6 @@ import { TimelineDocs } from "./pages/timeline-docs"
 import { StatCardDocs } from "./pages/stat-card-docs"
 import { TreeViewDocs } from "./pages/tree-view-docs"
 import { CalendarDocs } from "./pages/calendar-docs"
-import { DataGridDocs } from "./pages/data-grid-docs"
 import { KanbanDocs } from "./pages/kanban-docs"
 import { DrawerDocs } from "./pages/drawer-docs"
 import { PopoverDocs } from "./pages/popover-docs"
@@ -107,6 +106,7 @@ import { APIDocs } from "./pages/API-doc"
 import { StorageStoreDocs } from "./pages/storage-docs"
 import { DecryptionDocs } from "./pages/decryption-docs"
 import { ModalGlobalSearchDocs } from "./pages/modal-global-search-docs"
+import { DocumentGeneratorDocs } from "./pages/document-generator-docs"
 
 const ROUTE_LABELS: Record<string, string> = {
   "/bulletin-board":        "Bulletin Board",
@@ -146,7 +146,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/resizable-panels":      "Resizable Panels",
   "/panel":                  "Panel",
   "/wizard":                 "Wizard",
-  "/ui-builder":            "UI Builder",
   "/packages":              "Packages",
   "/authentication":        "Authentication",
   "/":                      "Dashboard",
@@ -170,6 +169,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/storage":              "storage",
   "/decryption":           "Decryption",
   "/modal-global-search":  "Modal Global Search",
+  "/document-generator":    "Document Generator",
 }
 
 // Content registry for comprehensive search
@@ -667,8 +667,8 @@ function AppShell() {
         <SidebarNavItem to="/placeholder" icon={Ghost} label="Placeholder" />
       </SidebarGroup>
       <SidebarGroup title="Tools">
-        <SidebarNavItem to="/ui-builder" icon={Palette} label="UI Builder" />
         <SidebarNavItem to="/packages" icon={Box} label="Packages" />
+        <SidebarNavItem to="/document-generator" icon={FileText} label="Document Generator" />
       </SidebarGroup>
       <SidebarGroup title="Configuration">
         <SidebarNavItem to="/settings" icon={Settings} label="Settings" />
@@ -758,6 +758,7 @@ function AppShell() {
            <Route path="/ui-builder" element={<UIBuilder />} />
            <Route path="/packages" element={<PackagesDocs />} />
            <Route path="/modal-global-search" element={<ModalGlobalSearchDocs />} />
+           <Route path="/document-generator" element={<DocumentGeneratorDocs />} />
            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

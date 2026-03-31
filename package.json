@@ -48,6 +48,7 @@
     "react-instantsearch": "^7.28.1",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.1",
+    "react-to-print": "^3.3.0",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.12"
   },

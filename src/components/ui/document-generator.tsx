@@ -1,13 +1,48 @@
-import React, { forwardRef, useRef, useState } from "react"
+import React, { forwardRef, useRef, useState, useEffect } from "react"
 import { useReactToPrint } from "react-to-print"
-import { Printer, Building2, User, FileText, Hash, ImageIcon, Settings2, X, MapPin } from "lucide-react"
+import { Printer, Building2, User, FileText, Hash, ImageIcon, Settings2, X, MapPin, Copy, Download, Eye } from "lucide-react"
 import { cn } from "../../lib/utils"
+import { useToast } from "./notification"
 
 // ─── Payload Types ────────────────────────────────────────────────────────────
 
 export type BorderVariant = "double" | "single" | "thick" | "dashed" | "none"
 export type CivilStatus = "Single" | "Married" | "Widowed" | "Separated"
 export type Gender = "he" | "she" | "they"
+export type PaperSize = "Letter" | "Legal" | "A4"
+
+export interface GridlinesColRows {
+  cols: number
+  rows: number
+}
+
+export interface StylesPayloadItem {
+  shape: "line" | "box"
+  width: number
+  height: number
+  color: string
+  xAxis: number
+  yAxis: number
+}
+
+export interface DataPayloadItem {
+  xAxis: number
+  yAxis: number
+  value: string
+  font_size?: number
+  font_family?: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  color?: string
+  image?: {
+    url: string
+    width: number
+    height: number
+    opacity?: number
+  }
+  zIndex?: number
+}
 
 export interface DocumentHeader {
   republic: string          // "Republic of the Philippines"
@@ -57,29 +92,47 @@ export interface DocumentConfig {
   backgroundImage: string
   backgroundOpacity: number
   showCtc: boolean
+  paperSize?: PaperSize
+  gridlines?: GridlinesColRows
+  showGridlines?: boolean
+  dataPayloads?: DataPayloadItem[]
+  stylesPayload?: StylesPayloadItem[]
+  dataLinkPayload?: { key: string; value: string }[]
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_CONFIG: DocumentConfig = {
-  borderVariant: "double",
-  borderWidth: 2,
+  borderVariant: "none",
+  borderWidth: 0,
   borderColor: "#6366f1",
   backgroundImage: "",
-  backgroundOpacity: 8,
-  showCtc: true,
+  backgroundOpacity: 0,
+  showCtc: false,
+  paperSize: "A4",
+  gridlines: { cols: 2481, rows: 3507 },
+  showGridlines: true,
+  dataPayloads: [],
+  stylesPayload: [],
+  dataLinkPayload: [],
+}
+
+const PAPER_SIZES: Record<PaperSize, GridlinesColRows> = {
+  Letter: { cols: 2550, rows: 3300 },
+  Legal: { cols: 2550, rows: 4200 },
+  A4: { cols: 2481, rows: 3507 },
 }
 
 const DEFAULT_PAYLOAD: DocumentPayload = {
   type: "Barangay Clearance",
   header: {
-    republic: "Republic of the Philippines",
-    barangayName: "Barangay San Jose",
-    cityMunicipality: "Calamba City",
-    province: "Laguna",
-    officialSeal: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Coat_of_arms_of_the_Philippines.svg/200px-Coat_of_arms_of_the_Philippines.svg.png",
+    republic: "",
+    barangayName: "",
+    cityMunicipality: "",
+    province: "",
+    officialSeal: "",
   },
-  title: "Barangay Clearance",
+  title: "",
   controlNumber: "",
   certificationStatement: {
     fullName: "",
@@ -88,10 +141,10 @@ const DEFAULT_PAYLOAD: DocumentPayload = {
     completeAddress: "",
     purpose: "",
   },
-  issuanceDate: new Date().toISOString().split("T")[0],
+  issuanceDate: "",
   signatories: {
-    captain:   { name: "", title: "Punong Barangay" },
-    secretary: { name: "", title: "Barangay Secretary" },
+    captain: { name: "", title: "" },
+    secretary: { name: "", title: "" },
   },
   ctc: { number: "", date: "", place: "" },
 }
@@ -99,6 +152,18 @@ const DEFAULT_PAYLOAD: DocumentPayload = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition"
+
+// Process text replacement using dataLinkPayload
+function processTextReplacement(text: string, dataLinkPayload: { key: string; value: string }[] = []): string {
+  let processedText = text
+  
+  dataLinkPayload.forEach(({ key, value }) => {
+    const pattern = new RegExp(`\\[${key}\\]`, 'g')
+    processedText = processedText.replace(pattern, value)
+  })
+  
+  return processedText
+}
 
 function FieldGroup({ label, icon: Icon, children }: { label: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
@@ -134,12 +199,17 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 const BORDER_VARIANTS: { value: BorderVariant; label: string }[] = [
   { value: "double", label: "Double" },
   { value: "single", label: "Single" },
-  { value: "thick",  label: "Thick"  },
+  { value: "thick", label: "Thick" },
   { value: "dashed", label: "Dashed" },
-  { value: "none",   label: "None"   },
+  { value: "none", label: "None" },
 ]
 
 const CIVIL_STATUSES: CivilStatus[] = ["Single", "Married", "Widowed", "Separated"]
+const PAPER_SIZE_OPTIONS: { value: PaperSize; label: string }[] = [
+  { value: "Letter", label: "Letter (2550×3300)" },
+  { value: "Legal", label: "Legal (2550×4200)" },
+  { value: "A4", label: "A4 (2481×3507)" },
+]
 
 // ─── Form Component ───────────────────────────────────────────────────────────
 
@@ -150,9 +220,10 @@ interface FormProps {
   onConfig: (config: DocumentConfig) => void
   onBgUpload: (dataUrl: string) => void
   onPrint: () => void
+  onShowPayloads: () => void
 }
 
-export function FormComponent({ payload, config, onPayload, onConfig, onBgUpload, onPrint }: FormProps) {
+export function FormComponent({ payload, config, onPayload, onConfig, onBgUpload, onPrint, onShowPayloads }: FormProps) {
   const bgRef = useRef<HTMLInputElement>(null)
 
   const sh = (field: keyof DocumentHeader, val: string) =>
@@ -178,174 +249,534 @@ export function FormComponent({ payload, config, onPayload, onConfig, onBgUpload
   return (
     <div className="space-y-6 p-5">
 
-      {/* Document Style */}
-      <FieldGroup label="Document Style" icon={Settings2}>
-        <Field label="Border Style">
-          <div className="flex flex-wrap gap-1.5">
-            {BORDER_VARIANTS.map((v) => (
-              <button key={v.value}
-                onClick={() => onConfig({ ...config, borderVariant: v.value })}
-                className={cn("px-2.5 py-1 rounded text-xs font-medium border transition",
-                  config.borderVariant === v.value
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-                )}
-              >{v.label}</button>
-            ))}
-          </div>
+      {/* Paper Size & Gridlines */}
+      <FieldGroup label="Paper Configuration" icon={Settings2}>
+        <Field label="Paper Size">
+          <select className={inputCls} value={config.paperSize || "A4"}
+            onChange={(e) => {
+              const paperSize = e.target.value as PaperSize
+              const gridlines = PAPER_SIZES[paperSize]
+              onConfig({ ...config, paperSize, gridlines })
+            }}>
+            {PAPER_SIZE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
         </Field>
 
-        {config.borderVariant !== "none" && (
-          <Field label={`Border Width: ${config.borderWidth}px`}>
-            <input type="range" min={1} max={8} step={1} value={config.borderWidth}
-              onChange={(e) => onConfig({ ...config, borderWidth: Number(e.target.value) })}
-              className="w-full accent-primary" />
-          </Field>
-        )}
-
-        {config.borderVariant !== "none" && (
-          <Field label="Border Color">
-            <div className="flex items-center gap-2">
-              <input type="color" value={config.borderColor}
-                onChange={(e) => onConfig({ ...config, borderColor: e.target.value })}
-                className="h-8 w-10 cursor-pointer rounded border border-input bg-background p-0.5" />
-              <input className={cn(inputCls, "flex-1")} value={config.borderColor}
-                onChange={(e) => onConfig({ ...config, borderColor: e.target.value })} placeholder="#6366f1" />
-            </div>
-          </Field>
-        )}
-
-        <Field label="Background Image">
-          <input ref={bgRef} type="file" accept="image/*" className="hidden" onChange={handleBgFile} />
-          <div className="flex gap-2">
-            <button onClick={() => bgRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition flex-1 justify-center">
-              <ImageIcon className="h-3.5 w-3.5" />
-              {config.backgroundImage ? "Change Image" : "Upload Image"}
-            </button>
-            {config.backgroundImage && (
-              <button onClick={() => onBgUpload("")}
-                className="flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition">
-                <X className="h-3.5 w-3.5" />Remove
-              </button>
-            )}
-          </div>
-          {config.backgroundImage && (
-            <div className="mt-2 rounded overflow-hidden border border-border" style={{ height: 60 }}>
-              <img src={config.backgroundImage} alt="bg" className="w-full h-full object-cover" />
-            </div>
-          )}
-        </Field>
-
-        {config.backgroundImage && (
-          <Field label={`Background Opacity: ${config.backgroundOpacity}%`}>
-            <input type="range" min={2} max={40} step={1} value={config.backgroundOpacity}
-              onChange={(e) => onConfig({ ...config, backgroundOpacity: Number(e.target.value) })}
-              className="w-full accent-primary" />
-          </Field>
-        )}
-      </FieldGroup>
-
-      {/* Header */}
-      <FieldGroup label="Header" icon={Building2}>
-        <Field label="Barangay Name">
-          <input className={inputCls} value={payload.header.barangayName} onChange={(e) => sh("barangayName", e.target.value)} placeholder="Barangay San Jose" />
-        </Field>
-        <Field label="City / Municipality">
-          <input className={inputCls} value={payload.header.cityMunicipality} onChange={(e) => sh("cityMunicipality", e.target.value)} placeholder="Calamba City" />
-        </Field>
-        <Field label="Province">
-          <input className={inputCls} value={payload.header.province} onChange={(e) => sh("province", e.target.value)} placeholder="Laguna" />
-        </Field>
-        <Field label="Official Seal URL">
-          <input className={inputCls} value={payload.header.officialSeal} onChange={(e) => sh("officialSeal", e.target.value)} placeholder="https://..." />
-        </Field>
-      </FieldGroup>
-
-      {/* Certification Statement */}
-      <FieldGroup label="Certification Statement" icon={User}>
-        <Field label="Full Name">
-          <input className={inputCls} value={payload.certificationStatement.fullName}
-            onChange={(e) => sc("fullName", e.target.value)} placeholder="Juan Dela Cruz" />
-        </Field>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Civil Status">
-            <select className={inputCls} value={payload.certificationStatement.civilStatus}
-              onChange={(e) => sc("civilStatus", e.target.value)}>
-              {CIVIL_STATUSES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-          </Field>
-          <Field label="Pronoun">
-            <select className={inputCls} value={payload.certificationStatement.gender}
-              onChange={(e) => sc("gender", e.target.value)}>
-              <option value="he">he/him</option>
-              <option value="she">she/her</option>
-              <option value="they">they/them</option>
-            </select>
-          </Field>
-        </div>
-        <Field label="Complete Address">
-          <input className={inputCls} value={payload.certificationStatement.completeAddress}
-            onChange={(e) => sc("completeAddress", e.target.value)} placeholder="123 Rizal St., Brgy. San Jose" />
-        </Field>
-        <Field label="Purpose">
-          <textarea className={cn(inputCls, "resize-none")} rows={2}
-            value={payload.certificationStatement.purpose}
-            onChange={(e) => sc("purpose", e.target.value)}
-            placeholder="Employment / Loan Application / etc." />
-        </Field>
-      </FieldGroup>
-
-      {/* Document Details */}
-      <FieldGroup label="Document Details" icon={FileText}>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Control No.">
-            <input className={inputCls} value={payload.controlNumber}
-              onChange={(e) => onPayload({ ...payload, controlNumber: e.target.value })} placeholder="2024-001" />
-          </Field>
-          <Field label="Date of Issuance">
-            <input type="date" className={inputCls} value={payload.issuanceDate}
-              onChange={(e) => onPayload({ ...payload, issuanceDate: e.target.value })} />
-          </Field>
-        </div>
-      </FieldGroup>
-
-      {/* Signatories */}
-      <FieldGroup label="Signatories" icon={MapPin}>
-        <Field label="Barangay Captain">
-          <input className={inputCls} value={payload.signatories.captain.name}
-            onChange={(e) => ss("captain", "name", e.target.value)} placeholder="Hon. Maria Santos" />
-        </Field>
-        <Field label="Barangay Secretary">
-          <input className={inputCls} value={payload.signatories.secretary.name}
-            onChange={(e) => ss("secretary", "name", e.target.value)} placeholder="Juan Reyes" />
-        </Field>
-      </FieldGroup>
-
-      {/* CTC — optional */}
-      <FieldGroup label="CTC / Cedula" icon={Hash}>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Include CTC in document</span>
-          <Toggle checked={config.showCtc} onChange={() => onConfig({ ...config, showCtc: !config.showCtc })} />
+          <span className="text-xs text-muted-foreground">Show Gridlines</span>
+          <Toggle checked={config.showGridlines || false} onChange={() =>
+            onConfig({ ...config, showGridlines: !config.showGridlines })
+          } />
         </div>
-        {config.showCtc && (
-          <>
-            <Field label="CTC Number">
-              <input className={inputCls} value={payload.ctc?.number ?? ""}
-                onChange={(e) => sctc("number", e.target.value)} placeholder="12345678" />
-            </Field>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Date Issued">
-                <input type="date" className={inputCls} value={payload.ctc?.date ?? ""}
-                  onChange={(e) => sctc("date", e.target.value)} />
+      </FieldGroup>
+
+      {/* Data Payloads */}
+      <FieldGroup label="Data Payloads" icon={Hash}>
+        <div className="space-y-3">
+          {(config.dataPayloads || []).map((item, index) => (
+            <div key={index} className="p-3 border border-border rounded-md bg-muted/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Item {index + 1}</span>
+                <button onClick={() => {
+                  const newPayloads = [...(config.dataPayloads || [])]
+                  newPayloads.splice(index, 1)
+                  onConfig({ ...config, dataPayloads: newPayloads })
+                }} className="text-xs text-destructive hover:bg-destructive/10 p-1 rounded">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="X Axis *">
+                  <input
+                    type="number"
+                    className={cn(inputCls, !item.xAxis && "border-destructive")}
+                    value={item.xAxis || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const xAxis = value === "" ? 0 : Number(value)
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, xAxis }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    placeholder="Required"
+                    min="0"
+                    required
+                  />
+                  {!item.xAxis && <span className="text-xs text-destructive">X axis is required</span>}
+                </Field>
+                <Field label="Y Axis *">
+                  <input
+                    type="number"
+                    className={cn(inputCls, !item.yAxis && "border-destructive")}
+                    value={item.yAxis || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const yAxis = value === "" ? 0 : Number(value)
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, yAxis }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    placeholder="Required"
+                    min="0"
+                    required
+                  />
+                  {!item.yAxis && <span className="text-xs text-destructive">Y axis is required</span>}
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Font Size">
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={item.font_size || 12}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, font_size: Number(e.target.value) || 12 }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    placeholder="12"
+                    min="8"
+                    max="72"
+                  />
+                </Field>
+              </div>
+
+              <Field label="Text Value">
+                <input
+                  className={inputCls}
+                  value={item.value}
+                  onChange={(e) => {
+                    const newPayloads = [...(config.dataPayloads || [])]
+                    newPayloads[index] = { ...item, value: e.target.value }
+                    onConfig({ ...config, dataPayloads: newPayloads })
+                  }}
+                  placeholder="Text content"
+                />
               </Field>
-              <Field label="Place Issued">
-                <input className={inputCls} value={payload.ctc?.place ?? ""}
-                  onChange={(e) => sctc("place", e.target.value)} placeholder="Calamba, Laguna" />
+
+              {/* Image Section */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">Image (Optional)</span>
+                </div>
+
+                <Field label="Image URL">
+                  <input
+                    className={inputCls}
+                    value={item.image?.url || ""}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = {
+                        ...item,
+                        image: e.target.value ? {
+                          url: e.target.value,
+                          width: item.image?.width || 50,
+                          height: item.image?.height || 50,
+                          opacity: item.image?.opacity || 100
+                        } : undefined
+                      }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </Field>
+
+                {item.image?.url && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Image Width">
+                        <input
+                          type="number"
+                          className={inputCls}
+                          value={item.image.width}
+                          onChange={(e) => {
+                            const newPayloads = [...(config.dataPayloads || [])]
+                            newPayloads[index] = {
+                              ...item,
+                              image: {
+                                ...item.image!,
+                                width: Number(e.target.value) || 50
+                              }
+                            }
+                            onConfig({ ...config, dataPayloads: newPayloads })
+                          }}
+                          placeholder="50"
+                          min="10"
+                          max="500"
+                        />
+                      </Field>
+                      <Field label="Image Height">
+                        <input
+                          type="number"
+                          className={inputCls}
+                          value={item.image.height}
+                          onChange={(e) => {
+                            const newPayloads = [...(config.dataPayloads || [])]
+                            newPayloads[index] = {
+                              ...item,
+                              image: {
+                                ...item.image!,
+                                height: Number(e.target.value) || 50
+                              }
+                            }
+                            onConfig({ ...config, dataPayloads: newPayloads })
+                          }}
+                          placeholder="50"
+                          min="10"
+                          max="500"
+                        />
+                      </Field>
+                    </div>
+                    
+                    <Field label="Image Opacity">
+                      <input
+                        type="range"
+                        className="w-full"
+                        min="0"
+                        max="100"
+                        value={item.image.opacity || 100}
+                        onChange={(e) => {
+                          const newPayloads = [...(config.dataPayloads || [])]
+                          newPayloads[index] = {
+                            ...item,
+                            image: {
+                              ...item.image!,
+                              opacity: Number(e.target.value)
+                            }
+                          }
+                          onConfig({ ...config, dataPayloads: newPayloads })
+                        }}
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>0%</span>
+                        <span>{item.image.opacity || 100}%</span>
+                        <span>100%</span>
+                      </div>
+                    </Field>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Font Family">
+                  <select
+                    className={inputCls}
+                    value={item.font_family || "Times New Roman"}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, font_family: e.target.value }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Courier New">Courier New</option>
+                  </select>
+                </Field>
+                <Field label="Color">
+                  <input
+                    type="color"
+                    className={inputCls}
+                    value={item.color || "#1a1a1a"}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, color: e.target.value }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                  />
+                </Field>
+              </div>
+
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.bold || false}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, bold: e.target.checked }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    className="rounded"
+                  />
+                  Bold
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.italic || false}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, italic: e.target.checked }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    className="rounded"
+                  />
+                  Italic
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.underline || false}
+                    onChange={(e) => {
+                      const newPayloads = [...(config.dataPayloads || [])]
+                      newPayloads[index] = { ...item, underline: e.target.checked }
+                      onConfig({ ...config, dataPayloads: newPayloads })
+                    }}
+                    className="rounded"
+                  />
+                  Underline
+                </label>
+              </div>
+              
+              <Field label="Z-Index (Layer Order)">
+                <input
+                  type="number"
+                  className={inputCls}
+                  value={item.zIndex || 1}
+                  onChange={(e) => {
+                    const newPayloads = [...(config.dataPayloads || [])]
+                    newPayloads[index] = { ...item, zIndex: Number(e.target.value) || 1 }
+                    onConfig({ ...config, dataPayloads: newPayloads })
+                  }}
+                  placeholder="1"
+                  min="0"
+                  max="999"
+                />
+                <span className="text-xs text-muted-foreground">Higher values appear on top</span>
               </Field>
             </div>
-          </>
-        )}
+          ))}
+
+          <button onClick={() => {
+            const newItem: DataPayloadItem = {
+              xAxis: 100,
+              yAxis: 100,
+              value: "New Text",
+              font_size: 12,
+              font_family: "Times New Roman",
+              bold: false,
+              italic: false,
+              underline: false,
+              color: "#1a1a1a"
+            }
+            onConfig({ ...config, dataPayloads: [...(config.dataPayloads || []), newItem] })
+          }} className="w-full flex items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary hover:text-primary transition">
+            <Hash className="h-3.5 w-3.5" />Add Data Item
+          </button>
+        </div>
+      </FieldGroup>
+
+      {/* Styles Payload */}
+      <FieldGroup label="Styles Payload" icon={Settings2}>
+        <div className="space-y-3">
+          {(config.stylesPayload || []).map((item, index) => (
+            <div key={index} className="p-3 border border-border rounded-md bg-muted/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Shape {index + 1}</span>
+                <button onClick={() => {
+                  const newStyles = [...(config.stylesPayload || [])]
+                  newStyles.splice(index, 1)
+                  onConfig({ ...config, stylesPayload: newStyles })
+                }} className="text-xs text-destructive hover:bg-destructive/10 p-1 rounded">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="X Axis *">
+                  <input
+                    type="number"
+                    className={cn(inputCls, !item.xAxis && "border-destructive")}
+                    value={item.xAxis || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const xAxis = value === "" ? 0 : Number(value)
+                      const newStyles = [...(config.stylesPayload || [])]
+                      newStyles[index] = { ...item, xAxis }
+                      onConfig({ ...config, stylesPayload: newStyles })
+                    }}
+                    placeholder="Required"
+                    min="0"
+                    required
+                  />
+                  {!item.xAxis && <span className="text-xs text-destructive">X axis is required</span>}
+                </Field>
+                <Field label="Y Axis *">
+                  <input
+                    type="number"
+                    className={cn(inputCls, !item.yAxis && "border-destructive")}
+                    value={item.yAxis || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const yAxis = value === "" ? 0 : Number(value)
+                      const newStyles = [...(config.stylesPayload || [])]
+                      newStyles[index] = { ...item, yAxis }
+                      onConfig({ ...config, stylesPayload: newStyles })
+                    }}
+                    placeholder="Required"
+                    min="0"
+                    required
+                  />
+                  {!item.yAxis && <span className="text-xs text-destructive">Y axis is required</span>}
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Shape *">
+                  <select
+                    className={inputCls}
+                    value={item.shape}
+                    onChange={(e) => {
+                      const newStyles = [...(config.stylesPayload || [])]
+                      newStyles[index] = { ...item, shape: e.target.value as "line" | "box" }
+                      onConfig({ ...config, stylesPayload: newStyles })
+                    }}
+                    required
+                  >
+                    <option value="line">Line</option>
+                    <option value="box">Box</option>
+                  </select>
+                </Field>
+                <Field label="Color">
+                  <input
+                    type="color"
+                    className={inputCls}
+                    value={item.color || "#000000"}
+                    onChange={(e) => {
+                      const newStyles = [...(config.stylesPayload || [])]
+                      newStyles[index] = { ...item, color: e.target.value }
+                      onConfig({ ...config, stylesPayload: newStyles })
+                    }}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Width *">
+                  <input
+                    type="number"
+                    className={cn(inputCls, !item.width && "border-destructive")}
+                    value={item.width || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const width = value === "" ? 0 : Number(value)
+                      const newStyles = [...(config.stylesPayload || [])]
+                      newStyles[index] = { ...item, width }
+                      onConfig({ ...config, stylesPayload: newStyles })
+                    }}
+                    placeholder="Required"
+                    min="1"
+                    required
+                  />
+                  {!item.width && <span className="text-xs text-destructive">Width is required</span>}
+                </Field>
+                <Field label="Height *">
+                  <input
+                    type="number"
+                    className={cn(inputCls, !item.height && "border-destructive")}
+                    value={item.height || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const height = value === "" ? 0 : Number(value)
+                      const newStyles = [...(config.stylesPayload || [])]
+                      newStyles[index] = { ...item, height }
+                      onConfig({ ...config, stylesPayload: newStyles })
+                    }}
+                    placeholder="Required"
+                    min="1"
+                    required
+                  />
+                  {!item.height && <span className="text-xs text-destructive">Height is required</span>}
+                </Field>
+              </div>
+            </div>
+          ))}
+
+          <button onClick={() => {
+            const newItem: StylesPayloadItem = {
+              shape: "line",
+              width: 2,
+              height: 120,
+              color: "#000000",
+              xAxis: 100,
+              yAxis: 98
+            }
+            onConfig({ ...config, stylesPayload: [...(config.stylesPayload || []), newItem] })
+          }} className="w-full flex items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary hover:text-primary transition">
+            <Settings2 className="h-3.5 w-3.5" />Add Style Item
+          </button>
+        </div>
+      </FieldGroup>
+
+      {/* Data Link Payload */}
+      <FieldGroup label="Data Link Payload" icon={MapPin}>
+        <div className="space-y-3">
+          {(config.dataLinkPayload || []).map((item, index) => (
+            <div key={index} className="p-3 border border-border rounded-md bg-muted/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Link {index + 1}</span>
+                <button onClick={() => {
+                  const newLinks = [...(config.dataLinkPayload || [])]
+                  newLinks.splice(index, 1)
+                  onConfig({ ...config, dataLinkPayload: newLinks })
+                }} className="text-xs text-destructive hover:bg-destructive/10 p-1 rounded">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Key *">
+                  <input
+                    className={cn(inputCls, !item.key.trim() && "border-destructive")}
+                    value={item.key}
+                    onChange={(e) => {
+                      const newLinks = [...(config.dataLinkPayload || [])]
+                      newLinks[index] = { ...item, key: e.target.value }
+                      onConfig({ ...config, dataLinkPayload: newLinks })
+                    }}
+                    placeholder="name"
+                    required
+                  />
+                  {!item.key.trim() && <span className="text-xs text-destructive">Key is required</span>}
+                </Field>
+                <Field label="Value *">
+                  <input
+                    className={cn(inputCls, !item.value.trim() && "border-destructive")}
+                    value={item.value}
+                    onChange={(e) => {
+                      const newLinks = [...(config.dataLinkPayload || [])]
+                      newLinks[index] = { ...item, value: e.target.value }
+                      onConfig({ ...config, dataLinkPayload: newLinks })
+                    }}
+                    placeholder="Juan"
+                    required
+                  />
+                  {!item.value.trim() && <span className="text-xs text-destructive">Value is required</span>}
+                </Field>
+              </div>
+              
+              <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+                Use <code>[{item.key}]</code> in text values to replace with "{item.value}"
+              </div>
+            </div>
+          ))}
+          
+          <button onClick={() => {
+            const newItem = { key: "name", value: "Juan" }
+            onConfig({ ...config, dataLinkPayload: [...(config.dataLinkPayload || []), newItem] })
+          }} className="w-full flex items-center justify-center gap-2 rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary hover:text-primary transition">
+            <MapPin className="h-3.5 w-3.5" />Add Data Link
+          </button>
+        </div>
+        
+        <div className="mt-4 p-3 bg-info/10 border border-info/20 rounded-md text-info text-xs">
+          <strong>How to use:</strong> In your text values, use <code>[keyName]</code> syntax. For example, if you have a key "name" with value "Juan", then <code>[name]</code> in any text will be replaced with "Juan".
+        </div>
       </FieldGroup>
     </div>
   )
@@ -360,17 +791,121 @@ function resolveBorders(config: DocumentConfig) {
   const base2: React.CSSProperties = { position: "absolute", inset: "10.5mm", borderRadius: "3px", pointerEvents: "none" }
   if (v === "double") return { outer: { ...base, border: `${bw}px solid ${c}` }, inner: { ...base2, border: `${Math.max(1, bw - 1)}px solid ${c}` } }
   if (v === "single") return { outer: { ...base, border: `${bw}px solid ${c}` }, inner: null }
-  if (v === "thick")  return { outer: { ...base, border: `${bw + 3}px solid ${c}` }, inner: null }
+  if (v === "thick") return { outer: { ...base, border: `${bw + 3}px solid ${c}` }, inner: null }
   if (v === "dashed") return { outer: { ...base, border: `${bw}px dashed ${c}` }, inner: { ...base2, border: `${Math.max(1, bw - 1)}px dotted ${c}` } }
   return { outer: {} as React.CSSProperties, inner: null }
 }
 
 // ─── Preview Document ─────────────────────────────────────────────────────────
 
-export const PreviewDocument = forwardRef<HTMLDivElement, { payload: DocumentPayload; config?: DocumentConfig }>(
-  ({ payload, config = DEFAULT_CONFIG }, ref) => {
+interface PreviewDocumentProps {
+  payload?: DocumentPayload
+  config?: DocumentConfig
+  src?: string | { config: DocumentConfig; payload: DocumentPayload }
+  dataLinkPayload?: { key: string; value: string }[]
+}
+
+export const PreviewDocument = forwardRef<HTMLDivElement, PreviewDocumentProps>(
+  ({ payload: propPayload, config: propConfig = DEFAULT_CONFIG, src, dataLinkPayload }, ref) => {
+    const [payload, setPayload] = useState<DocumentPayload>(propPayload || DEFAULT_PAYLOAD)
+    const [config, setConfig] = useState<DocumentConfig>(propConfig)
+    const [loading, setLoading] = useState(false)
+    const { toast } = useToast()
+
+    // Handle src and dataLinkPayload prop changes
+    useEffect(() => {
+      // Handle dataLinkPayload prop merging
+      if (dataLinkPayload && dataLinkPayload.length > 0) {
+        setConfig(prev => {
+          const existingKeys = (prev.dataLinkPayload || []).map(item => item.key)
+          const newLinks = dataLinkPayload.filter(item => !existingKeys.includes(item.key))
+          return {
+            ...prev,
+            dataLinkPayload: [...(prev.dataLinkPayload || []), ...newLinks]
+          }
+        })
+      }
+
+      if (!src) {
+        if (propPayload) setPayload(propPayload)
+        if (propConfig) setConfig(propConfig)
+        return
+      }
+
+      // If src is an object (direct data)
+      if (typeof src === 'object') {
+        const mergedConfig = {
+          ...src.config,
+          dataLinkPayload: [...(src.config.dataLinkPayload || []), ...(dataLinkPayload || [])]
+        }
+        setConfig(mergedConfig)
+        setPayload(src.payload)
+        return
+      }
+
+      // If src is a URL string
+      if (typeof src === 'string') {
+        setLoading(true)
+
+        fetch(src)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            }
+            return response.json()
+          })
+          .then(data => {
+            if (!data.config || !data.payload) {
+              throw new Error('Invalid JSON structure. Expected { config: {...}, payload: {...} }')
+            }
+            
+            // Merge dataLinkPayload prop with loaded config
+            const mergedConfig = {
+              ...data.config,
+              dataLinkPayload: [...(data.config.dataLinkPayload || []), ...(dataLinkPayload || [])]
+            }
+            
+            setConfig(mergedConfig)
+            setPayload(data.payload)
+            
+            if (toast) {
+              toast({
+                title: "Data loaded successfully!",
+                description: `Document payload loaded from ${src}${dataLinkPayload ? ' with additional data links' : ''}`,
+                duration: 3000,
+              })
+            }
+          })
+          .catch(error => {
+            console.error('Failed to load data:', error.message)
+            if (toast) {
+              toast({
+                title: "Failed to load data",
+                description: error.message,
+                variant: "error",
+                duration: 5000,
+              })
+            }
+          })
+          .finally(() => {
+            setLoading(false)
+          })
+      }
+    }, [src, dataLinkPayload, propPayload, propConfig, toast])
+
     const { header, certificationStatement: cs, signatories, ctc, issuanceDate, controlNumber } = payload
     const accentColor = config.borderVariant !== "none" ? config.borderColor : "#6366f1"
+
+    if (loading) {
+      return (
+        <div ref={ref} style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center", color: "#666" }}>
+            <div style={{ fontSize: "14px", marginBottom: "8px" }}>Loading document...</div>
+            <div style={{ fontSize: "12px" }}>Please wait</div>
+          </div>
+        </div>
+      )
+    }
 
     const formattedDate = issuanceDate
       ? new Date(issuanceDate).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })
@@ -379,12 +914,17 @@ export const PreviewDocument = forwardRef<HTMLDivElement, { payload: DocumentPay
     const pronoun = cs.gender === "she" ? "she" : cs.gender === "they" ? "they" : "he"
     const { outer, inner } = resolveBorders(config)
 
+    const gridlines = config.gridlines || PAPER_SIZES[config.paperSize || "A4"]
+    const dataPayloads = config.dataPayloads || []
+    const stylesPayload = config.stylesPayload || []
+    const mergedDataLinkPayload = config.dataLinkPayload || []
+
     return (
       <div ref={ref} style={{ width: "210mm", minHeight: "297mm", backgroundColor: "#ffffff", color: "#1a1a1a", fontFamily: "'Times New Roman', Times, serif", padding: "18mm 20mm", boxSizing: "border-box", position: "relative", overflow: "hidden" }}>
 
         {/* Watermark */}
         <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) rotate(-35deg)", fontSize: "72px", fontWeight: 900, color: "rgba(99,102,241,0.05)", whiteSpace: "nowrap", pointerEvents: "none", userSelect: "none", letterSpacing: "4px" }}>
-          OFFICIAL DOCUMENT
+          {/* OFFICIAL DOCUMENT */}
         </div>
 
         {/* Background image */}
@@ -396,27 +936,152 @@ export const PreviewDocument = forwardRef<HTMLDivElement, { payload: DocumentPay
         {Object.keys(outer).length > 0 && <div style={outer} />}
         {inner && <div style={inner} />}
 
+        {/* Gridlines */}
+        {config.showGridlines && gridlines && (
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.3 }}>
+            <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0 }}>
+              <defs>
+                <pattern id="grid" width={`${210 / gridlines.cols}mm`} height={`${297 / gridlines.rows}mm`} patternUnits="userSpaceOnUse">
+                  <path d={`M ${210 / gridlines.cols} 0 L 0 0 0 ${297 / gridlines.rows}`} fill="none" stroke="#6366f1" strokeWidth="0.1" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
+          </div>
+        )}
+
+        {/* Styles Payload */}
+        {stylesPayload.map((item, index) => {
+          const x = (item.xAxis * 210) / gridlines.cols
+          const y = (item.yAxis * 297) / gridlines.rows
+          const width = (item.width * 210) / gridlines.cols
+          const height = (item.height * 297) / gridlines.rows
+
+          if (item.shape === "line") {
+            return (
+              <div
+                key={`style-${index}`}
+                style={{
+                  position: "absolute",
+                  left: `${x}mm`,
+                  top: `${y}mm`,
+                  width: `${width}mm`,
+                  height: `${item.width}px`,
+                  backgroundColor: item.color,
+                  pointerEvents: "none",
+                }}
+              />
+            )
+          } else if (item.shape === "box") {
+            return (
+              <div
+                key={`style-${index}`}
+                style={{
+                  position: "absolute",
+                  left: `${x}mm`,
+                  top: `${y}mm`,
+                  width: `${width}mm`,
+                  height: `${height}mm`,
+                  border: `1px solid ${item.color}`,
+                  pointerEvents: "none",
+                }}
+              />
+            )
+          }
+          return null
+        })}
+
+        {/* Data Payloads */}
+        {dataPayloads
+          .sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1))
+          .map((item, index) => {
+            const x = (item.xAxis * 210) / gridlines.cols
+            const y = (item.yAxis * 297) / gridlines.rows
+
+            // Render image if present
+            if (item.image?.url) {
+              const imageWidth = (item.image.width * 210) / gridlines.cols
+              const imageHeight = (item.image.height * 297) / gridlines.rows
+              const imageOpacity = (item.image.opacity || 100) / 100
+
+              return (
+                <img
+                  key={`image-${index}`}
+                  src={item.image.url}
+                  alt={item.value || "Image"}
+                  style={{
+                    position: "absolute",
+                    left: `${x}mm`,
+                    top: `${y}mm`,
+                    width: `${imageWidth}mm`,
+                    height: `${imageHeight}mm`,
+                    objectFit: "contain",
+                    pointerEvents: "none",
+                    transform: "translate(-50%, -50%)",
+                    opacity: imageOpacity,
+                    zIndex: item.zIndex || 1,
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none"
+                  }}
+                />
+              )
+            }
+
+            // Render text if no image or if text is provided
+            if (item.value) {
+              const processedText = processTextReplacement(item.value, mergedDataLinkPayload)
+              
+              return (
+                <div
+                  key={`text-${index}`}
+                  style={{
+                    position: "absolute",
+                    left: `${x}mm`,
+                    top: `${y}mm`,
+                    fontSize: `${item.font_size || 12}px`,
+                    fontFamily: item.font_family || "'Times New Roman', Times, serif",
+                    fontWeight: item.bold ? "bold" : "normal",
+                    fontStyle: item.italic ? "italic" : "normal",
+                    textDecoration: item.underline ? "underline" : "none",
+                    color: item.color || "#1a1a1a",
+                    pointerEvents: "none",
+                    transform: "translate(-50%, -50%)",
+                    whiteSpace: "nowrap",
+                    zIndex: item.zIndex || 1,
+                  }}
+                >
+                  {processedText}
+                </div>
+              )
+            }
+
+            return null
+          })}
+
         {/* ── HEADER ── */}
         <div style={{ textAlign: "center", marginBottom: "6mm" }}>
           <p style={{ fontSize: "9px", letterSpacing: "2px", textTransform: "uppercase", color: "#555", margin: 0 }}>{header.republic}</p>
-          <p style={{ fontSize: "9px", color: "#555", margin: "1mm 0 0" }}>{header.province || "Province of ___________"}</p>
-          <p style={{ fontSize: "9px", color: "#555", margin: "0" }}>{header.cityMunicipality || "City / Municipality of ___________"}</p>
+          <p style={{ fontSize: "9px", color: "#555", margin: "1mm 0 0" }}>{header.province}</p>
+          <p style={{ fontSize: "9px", color: "#555", margin: "0" }}>{header.cityMunicipality}</p>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12mm", margin: "5mm 0" }}>
-            <img src={header.officialSeal} alt="Official Seal"
-              style={{ width: "22mm", height: "22mm", objectFit: "contain" }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+            {header.officialSeal && (
+              <img src={header.officialSeal} alt="Official Seal"
+                style={{ width: "22mm", height: "22mm", objectFit: "contain" }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+            )}
             <div>
-              <p style={{ fontSize: "8px", letterSpacing: "1px", textTransform: "uppercase", color: "#555", margin: 0 }}>Office of the Punong Barangay</p>
+              <p style={{ fontSize: "8px", letterSpacing: "1px", textTransform: "uppercase", color: "#555", margin: 0 }}></p>
               <h1 style={{ fontSize: "18px", fontWeight: 900, margin: "1mm 0", color: "#1a1a1a", letterSpacing: "1px" }}>
-                {header.barangayName || "BARANGAY ___________"}
+                {header.barangayName}
               </h1>
-              <p style={{ fontSize: "9px", color: "#555", margin: 0 }}>{header.cityMunicipality || "City / Municipality of ___________"}</p>
+              <p style={{ fontSize: "9px", color: "#555", margin: 0 }}>{header.cityMunicipality}</p>
             </div>
           </div>
 
-          <div style={{ borderTop: `2px solid ${accentColor}`, margin: "3mm 0 1mm" }} />
-          <div style={{ borderTop: `1px solid ${accentColor}`, margin: "0 0 4mm" }} />
+          {/* <div style={{ borderTop: `2px solid ${accentColor}`, margin: "3mm 0 1mm" }} />
+          <div style={{ borderTop: `1px solid ${accentColor}`, margin: "0 0 4mm" }} /> */}
 
           {/* ── TITLE ── */}
           <h2 style={{ fontSize: "16px", fontWeight: 900, letterSpacing: "4px", textTransform: "uppercase", margin: 0, color: "#1a1a1a" }}>
@@ -431,59 +1096,69 @@ export const PreviewDocument = forwardRef<HTMLDivElement, { payload: DocumentPay
 
         {/* ── CERTIFICATION STATEMENT ── */}
         <div style={{ fontSize: "11px", lineHeight: "1.9", textAlign: "justify" }}>
-          <p style={{ margin: "0 0 4mm" }}>TO WHOM IT MAY CONCERN:</p>
+          {cs.fullName && (
+            <>
+              <p style={{ margin: "0 0 4mm" }}>TO WHOM IT MAY CONCERN:</p>
 
-          <p style={{ margin: "0 0 5mm", textIndent: "12mm" }}>
-            This is to certify that{" "}
-            <strong style={{ borderBottom: "1px solid #1a1a1a" }}>
-              {cs.fullName ? cs.fullName.toUpperCase() : "________________________________"}
-            </strong>
-            , of legal age, <strong>{cs.civilStatus}</strong>, residing at{" "}
-            <strong>{cs.completeAddress || "________________________________"}</strong>,
-            is a bonafide resident of this barangay. Based on barangay records,{" "}
-            <strong>{pronoun}</strong> has no pending case, complaint, or violation and is of good moral character.
-            This certificate is issued upon request of the above-named person for{" "}
-            <strong>{cs.purpose || "________________________________"}</strong>.
-          </p>
+              <p style={{ margin: "0 0 5mm", textIndent: "12mm" }}>
+                This is to certify that{" "}
+                <strong style={{ borderBottom: "1px solid #1a1a1a" }}>
+                  {cs.fullName.toUpperCase()}
+                </strong>
+                , of legal age, <strong>{cs.civilStatus}</strong>, residing at{" "}
+                <strong>{cs.completeAddress}</strong>,
+                is a bonafide resident of this barangay. Based on barangay records,{" "}
+                <strong>{pronoun}</strong> has no pending case, complaint, or violation and is of good moral character.
+                This certificate is issued upon request of the above-named person for{" "}
+                <strong>{cs.purpose}</strong>.
+              </p>
 
-          <p style={{ margin: "0 0 6mm", textIndent: "12mm" }}>
-            Issued this <strong>{formattedDate}</strong> at {header.barangayName || "___________"}, {header.cityMunicipality || "___________"}, Philippines.
-          </p>
+              <p style={{ margin: "0 0 6mm", textIndent: "12mm" }}>
+                Issued this <strong>{formattedDate}</strong> at {header.barangayName}, {header.cityMunicipality}, Philippines.
+              </p>
+            </>
+          )}
         </div>
 
         {/* ── CTC — optional ── */}
-        {config.showCtc && (
+        {config.showCtc && (ctc?.number || ctc?.date || ctc?.place) && (
           <div style={{ border: "1px solid #ccc", borderRadius: "3px", padding: "3mm 4mm", marginBottom: "8mm", fontSize: "9px", backgroundColor: "#fafafa" }}>
             <p style={{ margin: 0, fontWeight: 700, marginBottom: "1mm" }}>Community Tax Certificate (CTC)</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "2mm" }}>
-              <span>No.: <strong>{ctc?.number || "___________"}</strong></span>
-              <span>Date: <strong>{ctc?.date || "___________"}</strong></span>
-              <span>Place: <strong>{ctc?.place || "___________"}</strong></span>
+              <span>No.: <strong>{ctc?.number}</strong></span>
+              <span>Date: <strong>{ctc?.date}</strong></span>
+              <span>Place: <strong>{ctc?.place}</strong></span>
             </div>
           </div>
         )}
 
         {/* ── SIGNATORIES ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10mm", marginTop: "4mm" }}>
-          {[signatories.secretary, signatories.captain].map((s, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <div style={{ borderBottom: "1px solid #1a1a1a", marginBottom: "2mm", paddingBottom: "8mm" }} />
-              <p style={{ margin: 0, fontSize: "10px", fontWeight: 700 }}>{s.name || "___________________"}</p>
-              <p style={{ margin: "1mm 0 0", fontSize: "9px", color: "#555" }}>{s.title}</p>
-            </div>
-          ))}
-        </div>
+        {(signatories.secretary.name || signatories.captain.name) && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10mm", marginTop: "4mm" }}>
+            {[signatories.secretary, signatories.captain].map((s, i) => (
+              s.name && (
+                <div key={i} style={{ textAlign: "center" }}>
+                  <div style={{ borderBottom: "1px solid #1a1a1a", marginBottom: "2mm", paddingBottom: "8mm" }} />
+                  <p style={{ margin: 0, fontSize: "10px", fontWeight: 700 }}>{s.name}</p>
+                  <p style={{ margin: "1mm 0 0", fontSize: "9px", color: "#555" }}>{s.title}</p>
+                </div>
+              )
+            ))}
+          </div>
+        )}
 
         {/* ── BARANGAY SEAL stamp area ── */}
-        <div style={{ position: "absolute", bottom: "28mm", right: "22mm", width: "22mm", height: "22mm", border: "1px dashed #ccc", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <img src={header.officialSeal} alt="Seal"
-            style={{ width: "18mm", height: "18mm", objectFit: "contain", opacity: 0.25 }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
-        </div>
+        {header.officialSeal && (
+          <div style={{ position: "absolute", bottom: "28mm", right: "22mm", width: "22mm", height: "22mm", border: "1px dashed #ccc", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src={header.officialSeal} alt="Seal"
+              style={{ width: "18mm", height: "18mm", objectFit: "contain", opacity: 0.25 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ position: "absolute", bottom: "14mm", left: "20mm", right: "20mm", textAlign: "center", fontSize: "8px", color: "#aaa", borderTop: "0.5px solid #ddd", paddingTop: "2mm" }}>
-          This document is valid only when signed and sealed by the issuing authority.
+          {/* This document is valid only when signed and sealed by the issuing authority. */}
         </div>
       </div>
     )
@@ -493,36 +1168,170 @@ PreviewDocument.displayName = "PreviewDocument"
 
 // ─── DocumentGenerator ────────────────────────────────────────────────────────
 
-export function DocumentGenerator({ className }: { className?: string }) {
-  const [payload, setPayload] = useState<DocumentPayload>(DEFAULT_PAYLOAD)
-  const [config, setConfig]   = useState<DocumentConfig>(DEFAULT_CONFIG)
-  const printRef = useRef<HTMLDivElement>(null)
+interface DocumentGeneratorProps {
+  className?: string
+  src?: string | { config: DocumentConfig; payload: DocumentPayload }
+  dataLinkPayload?: { key: string; value: string }[]
+}
 
+export function DocumentGenerator({ className, src, dataLinkPayload }: DocumentGeneratorProps) {
+  const [payload, setPayload] = useState<DocumentPayload>(DEFAULT_PAYLOAD)
+  const [config, setConfig] = useState<DocumentConfig>(DEFAULT_CONFIG)
+  const [showPayloads, setShowPayloads] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const printRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
+
+  // Handle src and dataLinkPayload prop changes
+  useEffect(() => {
+    // Handle dataLinkPayload prop merging
+    if (dataLinkPayload && dataLinkPayload.length > 0) {
+      setConfig(prev => {
+        const existingKeys = (prev.dataLinkPayload || []).map(item => item.key)
+        const newLinks = dataLinkPayload.filter(item => !existingKeys.includes(item.key))
+        return {
+          ...prev,
+          dataLinkPayload: [...(prev.dataLinkPayload || []), ...newLinks]
+        }
+      })
+    }
+
+    if (!src) return
+
+    // If src is an object (direct data)
+    if (typeof src === 'object') {
+      const mergedConfig = {
+        ...src.config,
+        dataLinkPayload: [...(src.config.dataLinkPayload || []), ...(dataLinkPayload || [])]
+      }
+      setConfig(mergedConfig)
+      setPayload(src.payload)
+      setError(null)
+      return
+    }
+
+    // If src is a URL string
+    if (typeof src === 'string') {
+      setLoading(true)
+      setError(null)
+
+      fetch(src)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+          return response.json()
+        })
+        .then(data => {
+          if (!data.config || !data.payload) {
+            throw new Error('Invalid JSON structure. Expected { config: {...}, payload: {...} }')
+          }
+          
+          // Merge dataLinkPayload prop with loaded config
+          const mergedConfig = {
+            ...data.config,
+            dataLinkPayload: [...(data.config.dataLinkPayload || []), ...(dataLinkPayload || [])]
+          }
+          
+          setConfig(mergedConfig)
+          setPayload(data.payload)
+          setError(null)
+          toast({
+            title: "Data loaded successfully!",
+            description: `Document payload loaded from ${src}${dataLinkPayload ? ' with additional data links' : ''}`,
+            duration: 3000,
+          })
+        })
+        .catch(error => {
+          setError(error.message)
+          toast({
+            title: "Failed to load data",
+            description: error.message,
+            variant: "error",
+            duration: 5000,
+          })
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    }
+  }, [src, dataLinkPayload, toast])
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `${payload.title}-${payload.certificationStatement.fullName || "Document"}`,
     pageStyle: `@page{size:A4;margin:0}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}`,
   })
 
+  const payloadData = {
+    config: {
+      paperSize: config.paperSize,
+      gridlines: config.gridlines,
+      showGridlines: config.showGridlines,
+      dataPayloads: config.dataPayloads,
+      stylesPayload: config.stylesPayload,
+      dataLinkPayload: config.dataLinkPayload
+    },
+    payload
+  }
+
+  const handleCopyPayload = () => {
+    navigator.clipboard.writeText(JSON.stringify(payloadData, null, 2));
+    toast({
+      title: "Copied to clipboard!",
+      description: "The document payload has been copied to your clipboard.",
+      duration: 2000,
+    })
+  }
+
+  const handleDownloadPayload = () => {
+    const blob = new Blob([JSON.stringify(payloadData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `document-payload-${Date.now()}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className={cn("flex gap-0 h-full", className)}>
       {/* Left: Form */}
-      <div className="w-80 shrink-0 border-r border-border overflow-y-auto bg-card">
+      <div className="w-100 shrink-0 border-r border-border overflow-y-auto bg-card">
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-border bg-card/90 backdrop-blur">
           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">Document Form</span>
+            <Hash className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold">Data Payload Customization</span>
+            {loading && <span className="text-xs text-muted-foreground">(Loading...)</span>}
+            {error && <span className="text-xs text-destructive">(Error)</span>}
           </div>
-          <button onClick={() => handlePrint()}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition print:hidden">
-            <Printer className="h-3.5 w-3.5" />Print / PDF
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => handlePrint()}
+              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition print:hidden">
+              <Printer className="h-3.5 w-3.5" />Print / PDF
+            </button>
+            <button onClick={() => setShowPayloads(true)}
+              className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/90 transition print:hidden">
+              <Eye className="h-3.5 w-3.5" />Show Payloads
+            </button>
+          </div>
         </div>
+        
+        {/* Error Display */}
+        {error && (
+          <div className="mx-5 mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-xs">
+            <strong>Failed to load from src:</strong> {error}
+          </div>
+        )}
+        
         <FormComponent
           payload={payload} config={config}
           onPayload={setPayload} onConfig={setConfig}
           onBgUpload={(url) => setConfig((p) => ({ ...p, backgroundImage: url }))}
           onPrint={() => handlePrint()}
+          onShowPayloads={() => setShowPayloads(true)}
         />
       </div>
 
@@ -533,6 +1342,42 @@ export function DocumentGenerator({ className }: { className?: string }) {
           <PreviewDocument ref={printRef} payload={payload} config={config} />
         </div>
       </div>
+
+      {/* Payload Modal */}
+      {showPayloads && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-semibold">JSON Payload</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyPayload}
+                  className="flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/90 transition"
+                >
+                  <Copy className="h-3.5 w-3.5" />Copy
+                </button>
+                <button
+                  onClick={handleDownloadPayload}
+                  className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition"
+                >
+                  <Download className="h-3.5 w-3.5" />Download
+                </button>
+                <button
+                  onClick={() => setShowPayloads(false)}
+                  className="flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 transition"
+                >
+                  <X className="h-3.5 w-3.5" />Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <pre className="text-xs bg-muted/50 p-4 rounded-md overflow-auto">
+                <code>{JSON.stringify(payloadData, null, 2)}</code>
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -747,6 +747,14 @@ export interface ExtraActionConfig<T> {
   borderWidth?: number
   shadow?: boolean
   className?: string
+  /** Show a confirmation dialog before calling onClick */
+  confirmation?: boolean
+  confirmTitle?: string
+  confirmBody?: string
+  confirmActionText?: string
+  confirmActionColor?: "primary" | "secondary" | "outline" | "ghost" | "link" | "danger" | "success" | "destructive"
+  confirmCancelText?: string
+  confirmCancelColor?: "primary" | "secondary" | "outline" | "ghost" | "link" | "danger" | "success" | "destructive"
   onClick: (item: T) => void
 }
 
@@ -1934,10 +1942,14 @@ export function Table<T extends Record<string, any>>({
   const [deleteItem, setDeleteItem] = React.useState<T | null>(null)
   const [tableData,  setTableData]  = React.useState<T[]>(data ?? [])
 
-  // Confirmation modal state
+  // Confirmation modal state (column-level)
   const [confirmItem, setConfirmItem] = React.useState<T | null>(null)
   const [confirmValue, setConfirmValue] = React.useState<any>(null)
   const [confirmCol, setConfirmCol] = React.useState<Column<T> | null>(null)
+
+  // Extra action confirmation state
+  const [extraConfirmItem, setExtraConfirmItem] = React.useState<T | null>(null)
+  const [extraConfirmAction, setExtraConfirmAction] = React.useState<ExtraActionConfig<T> | null>(null)
 
   // Keep tableData in sync when data prop changes
   React.useEffect(() => { setTableData(data ?? []) }, [data])
@@ -2009,7 +2021,14 @@ export function Table<T extends Record<string, any>>({
               defaultLabel={extra.label ?? extra.key}
               defaultVariant={extra.variant ?? "outline"}
               defaultSize={defaultActions.actionsSize as "xs" | "sm" | "md" | "lg" | "xl"}
-              onClick={() => extra.onClick(item)}
+              onClick={() => {
+                if (extra.confirmation) {
+                  setExtraConfirmItem(item)
+                  setExtraConfirmAction(extra)
+                } else {
+                  extra.onClick(item)
+                }
+              }}
             />
           ))}
         </div>
@@ -2886,6 +2905,63 @@ export function Table<T extends Record<string, any>>({
         )
       })()}
     </div>
+
+      {/* Extra action confirmation modal */}
+      {extraConfirmItem && extraConfirmAction && createPortal(
+        <AnimatePresence>
+          <motion.div
+            key="extra-confirm-root"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.5)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) { setExtraConfirmItem(null); setExtraConfirmAction(null) } }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 8 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="relative w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl flex flex-col"
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h2 className="text-base font-semibold">{extraConfirmAction.confirmTitle ?? "Confirm Action"}</h2>
+                <button onClick={() => { setExtraConfirmItem(null); setExtraConfirmAction(null) }} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="px-6 py-4">
+                <p className="text-sm text-muted-foreground">
+                  {extraConfirmAction.confirmBody ?? "Are you sure you want to proceed?"}
+                </p>
+              </div>
+              <div className="px-6 py-4 border-t border-border flex justify-end gap-2">
+                <Button
+                  variant={extraConfirmAction.confirmCancelColor ?? "outline"}
+                  size="sm"
+                  onClick={() => { setExtraConfirmItem(null); setExtraConfirmAction(null) }}
+                >
+                  {extraConfirmAction.confirmCancelText ?? "Cancel"}
+                </Button>
+                <Button
+                  variant={extraConfirmAction.confirmActionColor ?? "primary"}
+                  size="sm"
+                  onClick={() => {
+                    extraConfirmAction.onClick(extraConfirmItem!)
+                    setExtraConfirmItem(null)
+                    setExtraConfirmAction(null)
+                  }}
+                >
+                  {extraConfirmAction.confirmActionText ?? "Confirm"}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Default action modals */}
       {defaultActions && viewItem && (

@@ -267,6 +267,10 @@ export type { RequestConfig } from "@/src/lib/codego/types"
 // ─── storage ───────────────────────────────────────────────────────────────────
 export * from "@/src/core/storage/store"
 
+// ─── Document Generator ──────────────────────────────────────────────────────
+export { DocumentGenerator, PreviewDocument } from "@/src/components/ui/document-generator"
+export type { DocumentPayload, DocumentConfig, GridlinesColRows, DataPayloadItem, StylesPayloadItem, PaperSize, BorderVariant, CivilStatus, Gender, DocumentHeader, CertificationStatement, DocumentSignatory, CtcData } from "@/src/components/ui/document-generator"
+
 // ─── Decryption ──────────────────────────────────────────────────────────────
 export { decryptResponse, decryptLaravelPayload, getLaravelSecretKey, parseLaravelKey, parseLaravelEncryptedPayload } from "@/src/core/decryption/decode"
 export type { LaravelEncryptedPayload } from "@/src/core/decryption/decode"

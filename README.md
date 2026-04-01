@@ -478,6 +478,7 @@ Applies to: `Input`, `Select`, `Textarea`, `Checkbox`, `ToggleSwitch`, `RadioGro
 | Data Grid | `DataGrid` |
 | Date Picker | `DatePickerPopup` |
 | Date Range Picker | `DateRangePicker`, `CalendarDateRangePicker` |
+| Document Generator | `DocumentGenerator`, `PreviewDocument` |
 | Drawer | `Drawer` |
 | Dropdown | `Dropdown` |
 | File Upload | `FileUpload` |

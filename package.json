@@ -4,7 +4,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "version": "3.7.4",
+  "version": "3.7.5",
   "description": "Reusable React UI components",
   "license": "MIT",
   "main": "dist/index.js",
